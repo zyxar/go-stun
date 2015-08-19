@@ -4,7 +4,7 @@
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
@@ -13,20 +13,23 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package stun
+package tools
 
-// RFC 3489
-const STUN_RFC_3489 = 0
+import (
+	"fmt"
+)
 
-// RFC 5389
-const STUN_RFC_5389 = 0
-
-// The chosen RFC used for compliance.
-var rfc int = STUN_RFC_3489
-
-// Set RFC to 3489.
-func  SetRfc3489() { rfc = STUN_RFC_3489 }
-
-// Set RFC to 5389
-func  SetRfc5389() { rfc = STUN_RFC_5389 }
-
+// This function is used to add message to a messages' spool.
+//
+// INPUT
+// - out_text: messages' spool.
+//   If this parameter is nil, then the message will be printed in through the standard output.
+//   Otherwize, the message will be appended to the spool.
+// - in_message: message to add.
+func AddText(out_text *[]string, in_message string) {
+	if nil == out_text {
+		fmt.Println(in_message)
+	} else {
+		*out_text = append(*out_text, in_message)
+	}
+}
