@@ -1,4 +1,4 @@
-
+= STUN Implementation in Go =
 
 == Description ==
 
@@ -20,17 +20,17 @@ Please let me know if you find a bug in the discovery process, for a particular 
 
 == Build instructions ==
 
-To build the package:
+To install the package:
 
-<code>go build stun</code>
+<code>go get github.com/zyxar/go-stun</code>
 
-To build the test client:
+To install the test client:
 
-<code>go install main</code>
+<code>go install github.com/zyxar/go-stun/cmd/stun</code>
 
 == The test client ==
 
-<code>bin/main -host provserver.televolution.net -verbose 1</code>
+<code>go run ./cmd/stun/main.go -host provserver.televolution.net -verbose 1</code>
 
 This will generate a nice output:
 
