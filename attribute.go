@@ -145,7 +145,7 @@ type StunAttribute struct {
 	Value []byte // variable number of bytes
 
 	// The packet which the attribute belongs to.
-	Packet *StunPacket // the packet that contains this attribute
+	Packet *Packet // the packet that contains this attribute
 }
 
 /* ------------------------------------------------------------------------------------------------ */
@@ -164,7 +164,7 @@ type StunAttribute struct {
 // OUTPUT
 // - The new attribute.
 // - The error flag.
-func AttributeCreate(in_type uint16, in_value []byte, in_packet *StunPacket) (StunAttribute, error) {
+func AttributeCreate(in_type uint16, in_value []byte, in_packet *Packet) (StunAttribute, error) {
 	var a StunAttribute
 
 	if (0 != len(in_value)%4) && (rfc == STUN_RFC_3489) {
@@ -199,12 +199,12 @@ func AttributeCreate(in_type uint16, in_value []byte, in_packet *StunPacket) (St
 //
 // WARNING
 // The FINGERPRINT attribute should be the last attribute of the STUN packet.
-func AttributeCreateFingerprint(in_packet *StunPacket) (StunAttribute, error) {
+func AttributeCreateFingerprint(in_packet *Packet) (StunAttribute, error) {
 	var err error
 	var res StunAttribute
 	buf := new(bytes.Buffer)
 
-	crc := __stunCrc32(in_packet.ToBytes())
+	crc := __stunCrc32(in_packet.Bytes())
 
 	err = binary.Write(buf, binary.BigEndian, crc)
 	if nil != err {
@@ -229,7 +229,7 @@ func AttributeCreateFingerprint(in_packet *StunPacket) (StunAttribute, error) {
 // OUTPUT
 // - The STUN's attribute.
 // - The error flag.
-func AttributeCreateSoftware(in_packet *StunPacket, in_name string) (StunAttribute, error) {
+func AttributeCreateSoftware(in_packet *Packet, in_name string) (StunAttribute, error) {
 	var err error
 	var res StunAttribute
 	name := []byte(in_name)
@@ -255,7 +255,7 @@ func AttributeCreateSoftware(in_packet *StunPacket, in_name string) (StunAttribu
 // OUTPUT
 // - The STUN's attribute.
 // - The error flag.
-func AttributeCreateChangeRequest(in_packet *StunPacket, in_ip bool, in_port bool) (StunAttribute, error) {
+func AttributeCreateChangeRequest(in_packet *Packet, in_ip bool, in_port bool) (StunAttribute, error) {
 	var err error
 	var res StunAttribute
 	var value []byte = make([]byte, 4, 4)

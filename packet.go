@@ -16,9 +16,7 @@
 package stun
 
 import (
-	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -157,47 +155,29 @@ var error_names = map[uint16]string{
 /* ------------------------------------------------------------------------------------------------ */
 
 // This type represents a STUN UDP packet.
-type StunPacket struct {
+type Packet struct {
 	// Type of the packet (constant STUN_TYPE_...).
 	stype uint16
-	// Lentgth of the packet.
-	// RF  5389: The message length MUST contain the size, in bytes, of the message
+	// RFC5389: The message length MUST contain the size, in bytes, of the message
 	//           **not** including the 20-byte STUN header.  Since all STUN attributes are
 	//           padded to a multiple of 4 bytes, the last 2 bits of this field are
 	//           always zero.  This provides another way to distinguish STUN packets
 	//           from packets of other protocols.
-	length uint16 // 16 bits
-	// The magik cookie (32 bits)
-	cookie uint32
-	// The STUN's ID.
-	// Size if the ID: 96 bits (12 bytes)
-	id []byte
-	// The list of attributes included in the packet.
-	attributes []StunAttribute
+	length     uint16          // Lentgth of the packet. 16 bits
+	cookie     uint32          // The magik cookie (32 bits)
+	id         [12]byte        // The STUN's ID. 96 bits (12 bytes)
+	attributes []StunAttribute // The list of attributes included in the packet.
 }
 
 /* ------------------------------------------------------------------------------------------------ */
 /* API                                                                                              */
 /* ------------------------------------------------------------------------------------------------ */
 
-// This function creates an empty packet.
-//
-// NOTE
-// The length of the packet is initialized to the value 20, which is the length of the header.
-func PacketCreate() StunPacket {
-	var v StunPacket
-	v.id = make([]byte, 12, 12)
-	v.attributes = make([]StunAttribute, 0, 10)
-	v.cookie = STUN_MAGIC_COOKIE
-	v.length = 0 // Header (20 bytes) is **not** included.
-	return v
-}
-
 // Set the packet's type.
 //
 // INPUT
 // - in_type: the packet's type.
-func (v *StunPacket) SetType(in_type uint16) {
+func (v *Packet) SetType(in_type uint16) {
 	v.stype = in_type
 }
 
@@ -205,7 +185,7 @@ func (v *StunPacket) SetType(in_type uint16) {
 //
 // OUTPUT
 // - The packet's type.
-func (v *StunPacket) GetType() uint16 {
+func (v *Packet) GetType() uint16 {
 	return v.stype
 }
 
@@ -213,7 +193,7 @@ func (v *StunPacket) GetType() uint16 {
 //
 // INPUT
 // - in_length; the packet's length.
-func (v *StunPacket) SetLength(in_length uint16) {
+func (v *Packet) SetLength(in_length uint16) {
 	v.length = in_length
 }
 
@@ -221,7 +201,7 @@ func (v *StunPacket) SetLength(in_length uint16) {
 //
 // OUTPUT
 // - The packet's length.
-func (v *StunPacket) GetLength() uint16 {
+func (v *Packet) GetLength() uint16 {
 	return v.length
 }
 
@@ -229,29 +209,26 @@ func (v *StunPacket) GetLength() uint16 {
 //
 // INPUT
 // - in_id: the STUN's ID.
-func (v *StunPacket) SetId(in_id []byte) {
+func (v *Packet) SetId(in_id []byte) {
 	if 12 != len(in_id) {
-		panic(fmt.Sprintf("Internal Error: invalid STUN ID."))
+		panic("Internal Error: invalid STUN ID.")
 	}
-	if 12 != cap(v.id) {
-		v.id = make([]byte, 12, 12)
-	}
-	copy(v.id, in_id)
+	copy(v.id[:], in_id)
 }
 
 // Get the STUN's ID.
 //
 // OUTPUT
 // - The STUN's ID.
-func (v *StunPacket) GetId() []byte {
-	return v.id
+func (v *Packet) GetId() []byte {
+	return v.id[:]
 }
 
 // Set the packet's magic cookie.
 //
 // INPUT
 // - in_cookie: the magic cookie.
-func (v *StunPacket) SetCookie(in_cookie uint32) {
+func (v *Packet) SetCookie(in_cookie uint32) {
 	v.cookie = in_cookie
 }
 
@@ -259,7 +236,7 @@ func (v *StunPacket) SetCookie(in_cookie uint32) {
 //
 // OUTPUT
 // - The packet's magic cookie.
-func (v *StunPacket) GetCookie() uint32 {
+func (v *Packet) GetCookie() uint32 {
 	return v.cookie
 }
 
@@ -267,7 +244,7 @@ func (v *StunPacket) GetCookie() uint32 {
 //
 // INPUT
 // - a: the attribute to add
-func (v *StunPacket) AddAttribute(a StunAttribute) {
+func (v *Packet) AddAttribute(a StunAttribute) {
 	v.attributes = append(v.attributes, a)
 	// Add the *TOTAL* length of the added attribute.
 	// (Padded) value + header
@@ -287,7 +264,7 @@ func (v *StunPacket) AddAttribute(a StunAttribute) {
 //
 // OUTPUT
 // - The number of attributes in the packet.
-func (v *StunPacket) GetAttributesCount() int {
+func (v *Packet) GetAttributesCount() int {
 	return len(v.attributes)
 }
 
@@ -298,7 +275,7 @@ func (v *StunPacket) GetAttributesCount() int {
 //
 // OUTPUT
 // - The attribute.
-func (v *StunPacket) GetAttribute(in_index int) StunAttribute {
+func (v *Packet) GetAttribute(in_index int) StunAttribute {
 	return v.attributes[in_index]
 }
 
@@ -306,143 +283,94 @@ func (v *StunPacket) GetAttribute(in_index int) StunAttribute {
 //
 // OUTPUT
 // - The sequence of bytes.
-func (v *StunPacket) ToBytes() []byte {
-	var err error
-	buf := new(bytes.Buffer)
-	res := make([]byte, 20, 20)
-
-	// Convert the header
-	// Add the message's type
-	err = binary.Write(buf, binary.BigEndian, v.stype)
-	if nil != err {
-		panic("Internal error")
-	}
-
-	// Add the packet's length.
-	// Note: at this point, set the length to 0.
-	err = binary.Write(buf, binary.BigEndian, v.length)
-	if nil != err {
-		panic("Internal error")
-	}
-
-	// Add the magic cookie.
-	err = binary.Write(buf, binary.BigEndian, v.cookie)
-	if nil != err {
-		panic("Internal error")
-	}
-
-	// Add the transaction ID.
-	res = append(buf.Bytes(), v.id...)
-
-	// Add attributes.
+func (v *Packet) Bytes() []byte {
+	length := 20
 	for i := 0; i < len(v.attributes); i++ {
-		res = append(res, Uint16toBytesMSF(v.attributes[i].Type)...)
-		// We set the *real* length, not the padded one.
-		length := v.attributes[i].Length
-		if length > 65535 {
-			panic(fmt.Sprintf("Invalid attribute's length (%d)!", length))
-		}
-		res = append(res, Uint16toBytesMSF(uint16(length))...)
-		// Please keep in mind that values contain padding.
-		res = append(res, v.attributes[i].Value...)
+		length += 4 + len(v.attributes[i].Value)
 	}
-
-	// Set the correct length
-	if (len(res) < 20) || (len(res) > 65535) {
-		panic("Internal error")
+	if length > 65535 {
+		return nil
 	}
-	// var length uint16 = uint16(len(res) - 20)
-	copy(res[2:4], Uint16toBytesMSF(v.length))
-
-	return res
+	p := make([]byte, length)
+	// Convert the header
+	binary.BigEndian.PutUint16(p[0:2], v.stype)  // Add the message's type.
+	binary.BigEndian.PutUint16(p[2:4], v.length) // Add the packet's length. // Note: at this point, set the length to 0.
+	binary.BigEndian.PutUint32(p[4:8], v.cookie) // Add the magic cookie.
+	copy(p[8:], v.id[:])                         // Add the transaction ID.
+	pos := 20
+	for i := 0; i < len(v.attributes); i++ { // Add attributes.
+		binary.BigEndian.PutUint16(p[pos:pos+2], v.attributes[i].Type)
+		pos += 2
+		binary.BigEndian.PutUint16(p[pos:pos+2], v.attributes[i].Length) // We set the *real* length, not the padded one.
+		pos += 2
+		copy(p[pos:], v.attributes[i].Value) // Please keep in mind that values contain padding.
+		pos += len(v.attributes[i].Value)
+	}
+	// var length uint16 = uint16(len(p) - 20)
+	binary.BigEndian.PutUint16(p[2:4], v.length)
+	return p
 }
 
 // This function converts a sequence of bytes into a STUN packet.
 //
 // INPUT
-// - in_bin: the sequence of bytes.
+// - b: the sequence of bytes. if b == nil, it creates an empty packet.
 //
 // OUTPUT
 // - The STUN packet.
 // - The error flag.
-func FromBytes(in_bin []byte) (StunPacket, error) {
-	var res StunPacket = PacketCreate()
+//
+// NOTE
+// The length of the packet is initialized to the value 20, which is the length of the header.
+func MakePacket(b []byte) (Packet, error) {
+	pkt := Packet{
+		cookie:     STUN_MAGIC_COOKIE,
+		length:     0, // Header (20 bytes) is **not** included.
+		attributes: make([]StunAttribute, 0, 10),
+	}
+	if b == nil {
+		return pkt, nil
+	}
 	var err error
-
-	if len(in_bin) < 20 {
-		return res, errors.New(fmt.Sprintf("The given list of bytes does not represent a STUN packet. Only %d bytes.", len(in_bin)))
+	b_len := len(b)
+	if b_len < 20 {
+		return pkt, fmt.Errorf("The given list of bytes does not represent a STUN packet. Only %d bytes.", b_len)
 	}
-	if len(in_bin) > 65535 {
-		return res, errors.New(fmt.Sprintf("The given list of bytes does not represent a STUN packet. %d bytes.", len(in_bin)))
+	if b_len > 65535 {
+		return pkt, fmt.Errorf("The given list of bytes does not represent a STUN packet. %d bytes.", b_len)
 	}
 
-	// Decode the message's type.
-	var stype uint16
-	err = binary.Read(bytes.NewBuffer(in_bin[0:2]), binary.BigEndian, &stype)
-	if nil != err {
-		panic("Internal error")
-	}
-	res.SetType(stype)
-
-	// Get the length
-	var length uint16
-	err = binary.Read(bytes.NewBuffer(in_bin[2:4]), binary.BigEndian, &length)
-	if nil != err {
-		panic("Internal error")
-	}
-	res.SetLength(length)
-
-	// Get the magik cookie
-	var cookie uint32
-	err = binary.Read(bytes.NewBuffer(in_bin[4:8]), binary.BigEndian, &cookie)
-	if nil != err {
-		panic("Internal error")
-	}
-	// if (STUN_MAGIC_COOKIE != cookie) { return res, errors.New(fmt.Sprintf("The value of the magic cookie is not correct (%d).", cookie)) }
-	res.SetCookie(cookie)
-
-	// Get the ID
-	res.SetId(in_bin[8:20])
+	pkt.stype = binary.BigEndian.Uint16(b[0:2])
+	pkt.length = binary.BigEndian.Uint16(b[2:4])
+	// if (STUN_MAGIC_COOKIE != cookie) { return pkt, fmt.Errorf("The value of the magic cookie is not correct (%d).", cookie) }
+	pkt.cookie = binary.BigEndian.Uint32(b[4:8])
+	pkt.SetId(b[8:20])
 
 	// Get attributes
 	// For RFC 5389 only:
 	//     Please keep in mind that values contain padding.
 	//     Lengthes of attribltes' values don't include the padding's length.
 	var pos uint16 = 20
-	for {
+	for pos < uint16(b_len) {
 		var vtype uint16
 		var length uint16
 		var value []byte
 		var attribute StunAttribute
-		if pos >= uint16(len(in_bin)) {
-			break
-		}
 
-		// Type of the attribute.
-		err = binary.Read(bytes.NewBuffer(in_bin[pos:pos+2]), binary.BigEndian, &vtype)
+		vtype = binary.BigEndian.Uint16(b[pos : pos+2])    // Type of the attribute.
+		length = binary.BigEndian.Uint16(b[pos+2 : pos+4]) // Length of the attribute (without the padding !!!!!!)
+		value = b[pos+4 : pos+4+length]                    // The value.
+		attribute, err = AttributeCreate(vtype, value, &pkt)
 		if nil != err {
-			return res, errors.New("Invalid STUN packet: can not decode attributes!")
+			return pkt, err
 		}
-
-		// Length of the attribute (without the padding !!!!!!)
-		err = binary.Read(bytes.NewBuffer(in_bin[pos+2:pos+4]), binary.BigEndian, &length)
-		if nil != err {
-			return res, errors.New("Invalid STUN packet: can not decode attributes!")
-		}
-
-		// The value.
-		value = in_bin[pos+4 : pos+4+length]
-		attribute, err = AttributeCreate(vtype, value, &res)
-		if nil != err {
-			return res, err
-		}
-		res.AddAttribute(attribute)
+		pkt.AddAttribute(attribute)
 
 		// 4 bytes: for the attribute's header.
 		if STUN_RFC_3489 == rfc {
 			pos += 4 + length
 			if 0 != pos%4 {
-				panic("STUN is configured to be compliant with RFC 3489! Value's length must be a multiple of 4 bytes!")
+				return pkt, fmt.Errorf("STUN is configured to be compliant with RFC 3489! Value's length must be a multiple of 4 bytes!")
 			}
 		} else {
 			// RFC 5389 only: we must take care of the padding.
@@ -450,14 +378,14 @@ func FromBytes(in_bin []byte) (StunPacket, error) {
 		}
 	}
 
-	return res, nil
+	return pkt, nil
 }
 
 // This function generates a textual representation of a given STUN packet.
 //
 // OUTPUT
 // - The textual representation.
-func (v *StunPacket) String(in_indent int) string {
+func (v *Packet) String(in_indent int) string {
 	indent := strings.Repeat(" ", in_indent)
 	lines := make([]string, 0, 10)
 	var mt string
@@ -543,7 +471,7 @@ func Bytes2String(in_bytes []byte, in_indent int) string {
 // - The IP address.
 // - The port number.
 // - The error flag.
-func (v *StunPacket) GetMappedAddress() (bool, uint16, string, uint16, error) {
+func (v *Packet) GetMappedAddress() (bool, uint16, string, uint16, error) {
 	for i := 0; i < v.GetAttributesCount(); i++ {
 		a := v.GetAttribute(i)
 		if STUN_ATTRIBUT_MAPPED_ADDRESS != a.Type {
@@ -565,7 +493,7 @@ func (v *StunPacket) GetMappedAddress() (bool, uint16, string, uint16, error) {
 // - The IP address.
 // - The port number.
 // - The error flag.
-func (v *StunPacket) GetChangedAddress() (bool, uint16, string, uint16, error) {
+func (v *Packet) GetChangedAddress() (bool, uint16, string, uint16, error) {
 	for i := 0; i < v.GetAttributesCount(); i++ {
 		a := v.GetAttribute(i)
 		if STUN_ATTRIBUT_CHANGED_ADDRESS != a.Type {
@@ -587,7 +515,7 @@ func (v *StunPacket) GetChangedAddress() (bool, uint16, string, uint16, error) {
 // - The IP address.
 // - The port number.
 // - The error flag.
-func (v *StunPacket) GetXorMappedAddress() (bool, uint16, string, uint16, error) {
+func (v *Packet) GetXorMappedAddress() (bool, uint16, string, uint16, error) {
 	for i := 0; i < v.GetAttributesCount(); i++ {
 		a := v.GetAttribute(i)
 		if (STUN_ATTRIBUT_XOR_MAPPED_ADDRESS != a.Type) && (STUN_ATTRIBUT_XOR_MAPPED_ADDRESS_EXP != a.Type) {

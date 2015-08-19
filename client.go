@@ -52,7 +52,7 @@ type requestResponse struct {
 	// This flag indicates wether a response has been received or not.
 	response bool
 	// If a response has been received, then this value contains the response.
-	packet StunPacket
+	packet Packet
 	// The local transport address.
 	// This value should is written: "IP:Port" (IPV4) or "[IP]:Port" (IPV6).
 	transport_local string
@@ -133,10 +133,10 @@ func ClientSendBinding(in_destination_address *string) (requestResponse, error) 
 	var err error
 	var connection net.Conn
 	var resp requestResponse
-	var packet StunPacket
+	var packet Packet
 	var dest_address string
 
-	packet = PacketCreate()
+	packet, _ = MakePacket(nil)
 	resp.init()
 
 	// Build the packet.
@@ -189,10 +189,10 @@ func ClientSendChangeRequest(in_change_ip bool) (requestResponse, error) {
 	var err error
 	var connection net.Conn
 	var resp requestResponse
-	var packet StunPacket
+	var packet Packet
 
 	resp.init()
-	packet = PacketCreate()
+	packet, _ = MakePacket(nil)
 
 	// Build the packet.
 	packet.SetType(STUN_TYPE_BINDING_REQUEST)

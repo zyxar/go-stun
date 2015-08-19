@@ -52,8 +52,8 @@ func ActivateOutput(in_vebosity int, out_verbose *[]string) {
 //   + true: the client received a response.
 //   + false: the client did not receive any response
 // - The error flag.
-func SendRequest(in_connexion net.Conn, in_request StunPacket) (StunPacket, bool, error) {
-	var rcv_packet StunPacket
+func SendRequest(in_connexion net.Conn, in_request Packet) (Packet, bool, error) {
+	var rcv_packet Packet
 	var request_timeout int = 100
 	var retries_count int = 0
 
@@ -66,17 +66,17 @@ func SendRequest(in_connexion net.Conn, in_request StunPacket) (StunPacket, bool
 
 		// Dump the packet.
 		if (verbosity > 0) && !sent {
-			addText(output, fmt.Sprintf("Sending REQUEST to \"%s\"\n\n%s\n", in_connexion.RemoteAddr(), Bytes2String(in_request.ToBytes(), 4)))
+			addText(output, fmt.Sprintf("Sending REQUEST to \"%s\"\n\n%s\n", in_connexion.RemoteAddr(), Bytes2String(in_request.Bytes(), 4)))
 			addText(output, fmt.Sprintf("%s\n", in_request.String(4)))
 			sent = true
 		}
 
 		// Send the packet.
-		count, err = in_connexion.Write(in_request.ToBytes())
+		count, err = in_connexion.Write(in_request.Bytes())
 		if err != nil {
 			return rcv_packet, false, errors.New(fmt.Sprintf("Can not send STUN UDP packet to server: %s", err))
 		}
-		if len(in_request.ToBytes()) != count {
+		if len(in_request.Bytes()) != count {
 			return rcv_packet, false, errors.New(fmt.Sprintf("Can not send STUN UDP packet to server: The number of bytes sent is not valid."))
 		}
 
@@ -113,7 +113,7 @@ func SendRequest(in_connexion net.Conn, in_request StunPacket) (StunPacket, bool
 		}
 
 		// Build the packet from the list of bytes.
-		rcv_packet, err = FromBytes(b[0:count])
+		rcv_packet, err = MakePacket(b[0:count])
 		if nil != err {
 			// The packet is not valid.
 			if verbosity > 0 {
@@ -122,7 +122,7 @@ func SendRequest(in_connexion net.Conn, in_request StunPacket) (StunPacket, bool
 			continue
 		}
 		if verbosity > 0 {
-			addText(output, fmt.Sprintf("Received\n\n%s\n", Bytes2String(rcv_packet.ToBytes(), 4)))
+			addText(output, fmt.Sprintf("Received\n\n%s\n", Bytes2String(rcv_packet.Bytes(), 4)))
 			addText(output, fmt.Sprintf("%s\n", rcv_packet.String(4)))
 		}
 

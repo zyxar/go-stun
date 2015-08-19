@@ -22,26 +22,6 @@ import (
 	"testing"
 )
 
-func TestUint16toBytesLSF(t *testing.T) {
-	b := Uint16toBytesLSF(0xFFAA)
-	if b[1] != 0xFF {
-		t.Errorf("First byte is not valid. Got %d, expected %d", b[1], 0xFF)
-	}
-	if b[0] != 0xAA {
-		t.Errorf("First byte is not valid. Got %d, expected %d", b[0], 0xAA)
-	}
-}
-
-func TestUint16toBytesMSF(t *testing.T) {
-	b := Uint16toBytesMSF(0xFFAA)
-	if b[1] != 0xAA {
-		t.Errorf("First byte is not valid. Got %d, expected %d", b[1], 0xAA)
-	}
-	if b[0] != 0xFF {
-		t.Errorf("First byte is not valid. Got %d, expected %d", b[0], 0xFF)
-	}
-}
-
 func TestInetSplit(t *testing.T) {
 	var ip string
 	var port int
