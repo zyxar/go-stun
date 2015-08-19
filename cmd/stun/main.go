@@ -23,7 +23,6 @@ import (
 	"strconv"
 
 	"github.com/zyxar/go-stun"
-	"github.com/zyxar/go-stun/tools"
 )
 
 func main() {
@@ -85,12 +84,12 @@ func main() {
 				continue
 			}
 
-			ip, err = tools.MakeTransportAddress(ips[idx], *serverPort)
+			ip, err = stun.MakeTransportAddress(ips[idx], *serverPort)
 			_ = err
 			break
 		}
 	} else {
-		ip, err = tools.MakeTransportAddress(ips[0], *serverPort)
+		ip, err = stun.MakeTransportAddress(ips[0], *serverPort)
 		_ = err
 	}
 	fmt.Println(fmt.Sprintf("\nUsing transport address \"%s\".\n", ip))

@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"hash/crc32"
 	"unicode/utf8"
-
-	"github.com/zyxar/go-stun/tools"
 )
 
 const (
@@ -385,12 +383,12 @@ func (v *StunAttribute) AttributeGetXorMappedAddress() (uint16, string, uint16, 
 	// - xored_ip_string
 	// - xored_port
 
-	ip_string, err = tools.BytesToIp(v.Value[4:])
+	ip_string, err = BytesToIp(v.Value[4:])
 	if nil != err {
 		return 0, "", 0, "", 0, err
 	}
 
-	xored_ip_string, err = tools.BytesToIp(xored_ip)
+	xored_ip_string, err = BytesToIp(xored_ip)
 	if nil != err {
 		return 0, "", 0, "", 0, err
 	}
@@ -547,7 +545,7 @@ func (v *StunAttribute) __getAddress() (uint16, string, uint16, error) {
 		return family, "", 0, err
 	}
 
-	ip, err = tools.BytesToIp(v.Value[4:])
+	ip, err = BytesToIp(v.Value[4:])
 	if nil != err {
 		return family, "", port, errors.New("Invalid IP family.")
 	}

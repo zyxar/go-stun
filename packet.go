@@ -21,8 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/zyxar/go-stun/tools"
 )
 
 const (
@@ -327,7 +325,7 @@ func (v *StunPacket) ToBytes() []byte {
 		panic("Internal error")
 	}
 
-	// Add the magik cookie.
+	// Add the magic cookie.
 	err = binary.Write(buf, binary.BigEndian, v.cookie)
 	if nil != err {
 		panic("Internal error")
@@ -338,13 +336,13 @@ func (v *StunPacket) ToBytes() []byte {
 
 	// Add attributes.
 	for i := 0; i < len(v.attributes); i++ {
-		res = append(res, tools.Uint16toBytesMSF(v.attributes[i].Type)...)
+		res = append(res, Uint16toBytesMSF(v.attributes[i].Type)...)
 		// We set the *real* length, not the padded one.
 		length := v.attributes[i].Length
 		if length > 65535 {
 			panic(fmt.Sprintf("Invalid attribute's length (%d)!", length))
 		}
-		res = append(res, tools.Uint16toBytesMSF(uint16(length))...)
+		res = append(res, Uint16toBytesMSF(uint16(length))...)
 		// Please keep in mind that values contain padding.
 		res = append(res, v.attributes[i].Value...)
 	}
@@ -354,7 +352,7 @@ func (v *StunPacket) ToBytes() []byte {
 		panic("Internal error")
 	}
 	// var length uint16 = uint16(len(res) - 20)
-	copy(res[2:4], tools.Uint16toBytesMSF(v.length))
+	copy(res[2:4], Uint16toBytesMSF(v.length))
 
 	return res
 }

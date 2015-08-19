@@ -1,3 +1,4 @@
+// Copyright (C) 2015 Markus Tzoe
 // Copyright (C) 2012 Denis BEURIVE
 //
 // This program is free software: you can redistribute it and/or modify
@@ -13,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package tools
+package stun
 
 import (
 	"bytes"
@@ -24,6 +25,44 @@ import (
 	"strconv"
 	"strings"
 )
+
+// This function converts a two bytes long unsigned integer into a slice of two bytes.
+// The first element of the returned slice represents the least significant byte of the given integer.
+// Example: b := Uint16toBytesLSF(0xFFAA)
+//          Then b[0] = 0xAA and b[1] = 0xFF. That is: b := []byte{0xAA, 0xFF}
+//
+// INPUT
+// - in_uint16: the two bytes long unsigned integer.
+//
+// OUTPUT
+// - The slice.
+func Uint16toBytesLSF(in_uint16 uint16) []byte {
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.LittleEndian, in_uint16)
+	if nil != err {
+		panic("Internal error")
+	}
+	return buf.Bytes()
+}
+
+// This function converts a two bytes long unsigned integer into a slice of two bytes.
+// The first element of the returned slice represents the most significant byte of the given integer.
+// Example: b := Uint16toBytesMSF(0xFFAA)
+//          Then b[0] = 0xFF and b[1] = 0xAA. That is: b := []byte{0xFF, 0xAA}
+//
+// INPUT
+// - in_uint16: the two bytes long unsigned integer.
+//
+// OUTPUT
+// - The slice.
+func Uint16toBytesMSF(in_uint16 uint16) []byte {
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.BigEndian, in_uint16)
+	if nil != err {
+		panic("Internal error")
+	}
+	return buf.Bytes()
+}
 
 // This function extracts the IP address and the port number from a string that represents a transport address.
 // The string should be "IP:port".
@@ -80,7 +119,7 @@ func InetSplit(in_inet string) (out_ip string, out_port int, out_err error) {
 // OUTPUT
 // - The list of bytes.
 // - The error flag.
-func IpToBytes(in_ip string) (out_bytes []byte, out_err error) {
+func IpToBytes(in_ip string) ([]byte, error) {
 	var err error
 	var dot, max uint64
 	var length int
@@ -95,7 +134,7 @@ func IpToBytes(in_ip string) (out_bytes []byte, out_err error) {
 
 	length = len(data)
 	if (4 != length) && (8 != length) {
-		return nil, errors.New(fmt.Sprintf("Invalid IP address \"%s\".", in_ip))
+		return nil, fmt.Errorf("Invalid IP address \"%s\".", in_ip)
 	}
 	if 4 == length {
 		max = 255
@@ -212,5 +251,20 @@ func MakeTransportAddress(in_ip string, in_port int) (string, error) {
 		return fmt.Sprintf("[%s]:%d", in_ip, in_port), nil
 	}
 
-	return "", errors.New(fmt.Sprintf("Invalid IP address \"%s\"!", in_ip))
+	return "", fmt.Errorf("Invalid IP address \"%s\"!", in_ip)
+}
+
+// This function is used to add message to a messages' spool.
+//
+// INPUT
+// - out_text: messages' spool.
+//   If this parameter is nil, then the message will be printed in through the standard output.
+//   Otherwize, the message will be appended to the spool.
+// - in_message: message to add.
+func addText(out_text *[]string, in_message string) {
+	if nil == out_text {
+		fmt.Println(in_message)
+	} else {
+		*out_text = append(*out_text, in_message)
+	}
 }

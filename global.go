@@ -21,8 +21,6 @@ import (
 	"net"
 	"strings"
 	"time"
-
-	"github.com/zyxar/go-stun/tools"
 )
 
 // Verbosity level for the STUN package.
@@ -68,8 +66,8 @@ func SendRequest(in_connexion net.Conn, in_request StunPacket) (StunPacket, bool
 
 		// Dump the packet.
 		if (verbosity > 0) && !sent {
-			tools.AddText(output, fmt.Sprintf("Sending REQUEST to \"%s\"\n\n%s\n", in_connexion.RemoteAddr(), Bytes2String(in_request.ToBytes(), 4)))
-			tools.AddText(output, fmt.Sprintf("%s\n", in_request.String(4)))
+			addText(output, fmt.Sprintf("Sending REQUEST to \"%s\"\n\n%s\n", in_connexion.RemoteAddr(), Bytes2String(in_request.ToBytes(), 4)))
+			addText(output, fmt.Sprintf("%s\n", in_request.String(4)))
 			sent = true
 		}
 
@@ -102,7 +100,7 @@ func SendRequest(in_connexion net.Conn, in_request StunPacket) (StunPacket, bool
 					break
 				}
 				if verbosity > 0 {
-					tools.AddText(output, fmt.Sprintf("%sTimeout (%04d ms) exceeded, retry...", strings.Repeat(" ", 4), request_timeout))
+					addText(output, fmt.Sprintf("%sTimeout (%04d ms) exceeded, retry...", strings.Repeat(" ", 4), request_timeout))
 				}
 				continue
 			}
@@ -111,7 +109,7 @@ func SendRequest(in_connexion net.Conn, in_request StunPacket) (StunPacket, bool
 
 		// For nice output.
 		if (verbosity > 0) && (retries_count > 0) {
-			tools.AddText(output, "\n")
+			addText(output, "\n")
 		}
 
 		// Build the packet from the list of bytes.
@@ -119,13 +117,13 @@ func SendRequest(in_connexion net.Conn, in_request StunPacket) (StunPacket, bool
 		if nil != err {
 			// The packet is not valid.
 			if verbosity > 0 {
-				tools.AddText(output, fmt.Sprintf("%sThe received packet is not valid. Continue.", strings.Repeat(" ", 4)))
+				addText(output, fmt.Sprintf("%sThe received packet is not valid. Continue.", strings.Repeat(" ", 4)))
 			}
 			continue
 		}
 		if verbosity > 0 {
-			tools.AddText(output, fmt.Sprintf("Received\n\n%s\n", Bytes2String(rcv_packet.ToBytes(), 4)))
-			tools.AddText(output, fmt.Sprintf("%s\n", rcv_packet.String(4)))
+			addText(output, fmt.Sprintf("Received\n\n%s\n", Bytes2String(rcv_packet.ToBytes(), 4)))
+			addText(output, fmt.Sprintf("%s\n", rcv_packet.String(4)))
 		}
 
 		// OK, a valid response has been received.
@@ -134,7 +132,7 @@ func SendRequest(in_connexion net.Conn, in_request StunPacket) (StunPacket, bool
 
 	// No valid packet has been received.
 	if verbosity > 0 {
-		tools.AddText(output, fmt.Sprintf(""))
+		addText(output, fmt.Sprintf(""))
 	}
 	return rcv_packet, false, nil
 }
