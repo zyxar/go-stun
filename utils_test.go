@@ -40,7 +40,7 @@ func TestInetSplit(t *testing.T) {
 		t.Errorf("Extracted IP: %s, given %s", ip, "192.168.0.1")
 	}
 	if port != 80 {
-		t.Errorf("Extracted port number: %d, given %s", port, 80)
+		t.Errorf("Extracted port number: %d, given %d", port, 80)
 	}
 
 	// Test KO
@@ -61,7 +61,7 @@ func TestInetSplit(t *testing.T) {
 		t.Errorf("Extracted IP: %s, given %s", ip, "0011:2233:4455:6677:8899:AABB:CCDD:EEFF")
 	}
 	if port != 125 {
-		t.Errorf("Extracted port number: %d, given %s", port, 125)
+		t.Errorf("Extracted port number: %d, given %d", port, 125)
 	}
 
 	ip, port, err = InetSplit("[0011:22:4455:6677:8899:A:CCDD:E]:125")
@@ -72,7 +72,7 @@ func TestInetSplit(t *testing.T) {
 		t.Errorf("Extracted IP: %s, given %s", ip, "0011:22:4455:6677:8899:A:CCDD:E")
 	}
 	if port != 125 {
-		t.Errorf("Extracted port number: %d, given %s", port, 125)
+		t.Errorf("Extracted port number: %d, given %d", port, 125)
 	}
 
 	ip, port, err = InetSplit("[0011:22:4455:6677:8899:A:CCDD:abcd]:125")
@@ -83,7 +83,7 @@ func TestInetSplit(t *testing.T) {
 		t.Errorf("Extracted IP: %s, given %s", ip, "0011:22:4455:6677:8899:A:CCDD:abcd")
 	}
 	if port != 125 {
-		t.Errorf("Extracted port number: %d, given %s", port, 125)
+		t.Errorf("Extracted port number: %d, given %d", port, 125)
 	}
 
 	ip, port, err = InetSplit("[0011:22:4455:6677:8899:A:CCDD:E:A]:125")

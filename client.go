@@ -516,7 +516,6 @@ func ClientDiscover() (int, error) {
 			return NAT_FULL_CONE, nil
 		}
 
-		return 0, nil
 	} else { // Test I (a): The local transport address is identical to the mapped transport address.
 
 		// RFC 3489: If this address and port are the same
@@ -555,6 +554,4 @@ func ClientDiscover() (int, error) {
 		}
 		return NAT_SYMETRIC_UDP_FIREWALL, nil
 	}
-
-	return 2, nil
 }
