@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"strings"
 )
 
 const (
@@ -156,14 +155,13 @@ var error_names = map[uint16]string{
 /* ------------------------------------------------------------------------------------------------ */
 
 // This type represents a STUN UDP packet.
+// RFC5389: The message length MUST contain the size, in bytes, of the message
+//           **not** including the 20-byte STUN header.  Since all STUN attributes are
+//           padded to a multiple of 4 bytes, the last 2 bits of this field are
+//           always zero.  This provides another way to distinguish STUN packets
+//           from packets of other protocols.
 type Packet struct {
-	// Type of the packet (constant TYPE_...).
-	_type uint16
-	// RFC5389: The message length MUST contain the size, in bytes, of the message
-	//           **not** including the 20-byte STUN header.  Since all STUN attributes are
-	//           padded to a multiple of 4 bytes, the last 2 bits of this field are
-	//           always zero.  This provides another way to distinguish STUN packets
-	//           from packets of other protocols.
+	_type      uint16      // Type of the packet (constant TYPE_...).
 	length     uint16      // Lentgth of the packet. 16 bits
 	cookie     uint32      // The magik cookie (32 bits)
 	id         [12]byte    // The STUN's ID. 96 bits (12 bytes)
@@ -311,28 +309,19 @@ func makePacket(_type uint16, _length uint16, b []byte) (Packet, error) {
 // - The textual representation.
 func (packet Packet) String() string {
 	var buffer bytes.Buffer
-	indent := strings.Repeat(" ", 4)
-	mt, ok := message_types[packet._type]
-	if !ok {
-		mt = "Unknown message type"
-	}
-	buffer.WriteString(fmt.Sprintf("%s% -21s: 0x%04x (%s)\n", indent, "Type", packet._type, mt))
-	buffer.WriteString(fmt.Sprintf("%s% -21s: %d (0x%04x)\n", indent, "Length", packet.length, packet.length))
-	buffer.WriteString(fmt.Sprintf("%s% -21s: 0x%x\n", indent, "Cookie", packet.cookie))
-	buffer.WriteString(fmt.Sprintf("%s% -21s: % x\n", indent, "ID", packet.id[:]))
-	buffer.WriteString(fmt.Sprintf("%s% -21s: %d\n", indent, "Number of attributes", packet.NAttributes()))
+	buffer.WriteString(fmt.Sprintf("% -14s: 0x%04x (%s)\n", "Type", packet._type, message_types[packet._type]))
+	buffer.WriteString(fmt.Sprintf("% -14s: %d (0x%04x)\n", "Length", packet.length, packet.length))
+	buffer.WriteString(fmt.Sprintf("% -14s: 0x%x\n", "Cookie", packet.cookie))
+	buffer.WriteString(fmt.Sprintf("% -14s: % x\n", "ID", packet.id[:]))
+	buffer.WriteString(fmt.Sprintf("% -14s: %d\n", "NAttributes", packet.NAttributes()))
 
 	for i := 0; i < packet.NAttributes(); i++ {
 		attr := packet.Attribute(i)
-		attribute_name, ok := attribute_names[attr.Type]
-		if !ok {
-			attribute_name = "Unknown attribute"
-		}
-		buffer.WriteString(fmt.Sprintf("%s% -21s: %d (total length %d)\n", indent, "Attribute number", i+1, attr.Length+4))
-		buffer.WriteString(fmt.Sprintf("%s% -21s: 0x%04x (%s)\n", indent, "Type", attr.Type, attribute_name))
-		buffer.WriteString(fmt.Sprintf("%s% -21s: %d\n", indent, "length", attr.Length))
-		buffer.WriteString(fmt.Sprintf("%s% -21s: % x\n", indent, "Value", attr.Value))
-		buffer.WriteString(fmt.Sprintf("%s% -21s: %s\n", indent, "Decode", attr.String()))
+		buffer.WriteString(fmt.Sprintf("% -14s: %d (total length %d)\n", "Attribute No.", i+1, attr.Length+4))
+		buffer.WriteString(fmt.Sprintf("% -14s: 0x%04x (%s)\n", "Type", attr.Type, attribute_names[attr.Type]))
+		buffer.WriteString(fmt.Sprintf("% -14s: %d\n", "length", attr.Length))
+		buffer.WriteString(fmt.Sprintf("% -14s: % x\n", "Value", attr.Value))
+		buffer.WriteString(fmt.Sprintf("% -14s: %s\n", "Decode", attr.String()))
 	}
 	return buffer.String()
 }
@@ -344,18 +333,18 @@ func (packet Packet) String() string {
 //
 // OUPUT
 // - The nicely formatted representation if the given list of bytes.
-func Bytes2String(p []byte) string {
+func (packet Packet) HexString() string {
+	p := packet.Bytes()
 	var buffer bytes.Buffer
-	indent := strings.Repeat(" ", 4)
 	length := len(p)
 	rest := length % 4
 	nb := (length - rest) / 4
 
 	for i := 0; i < nb; i++ {
-		buffer.WriteString(fmt.Sprintf("%s%02x %02x %02x %02x\n", indent, p[i*4], p[i*4+1], p[i*4+2], p[i*4+3]))
+		buffer.WriteString(fmt.Sprintf("\t%02x %02x %02x %02x\n", p[i*4], p[i*4+1], p[i*4+2], p[i*4+3]))
 	}
 	if rest > 0 {
-		buffer.WriteString(indent)
+		buffer.WriteByte('\t')
 		for i := 0; i < 4; i++ {
 			buffer.WriteByte(' ')
 			if nb*4+i >= len(p) {

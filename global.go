@@ -66,7 +66,7 @@ func SendRequest(in_connexion net.Conn, in_request Packet) (Packet, bool, error)
 
 		// Dump the packet.
 		if (verbosity > 0) && !sent {
-			addText(output, fmt.Sprintf("Sending REQUEST to \"%s\"\n\n%s\n", in_connexion.RemoteAddr(), Bytes2String(in_request.Bytes())))
+			addText(output, fmt.Sprintf("Sending REQUEST to \"%s\"\n\n%s\n", in_connexion.RemoteAddr(), in_request.HexString()))
 			addText(output, fmt.Sprintf("%s\n", in_request.String()))
 			sent = true
 		}
@@ -122,7 +122,7 @@ func SendRequest(in_connexion net.Conn, in_request Packet) (Packet, bool, error)
 			continue
 		}
 		if verbosity > 0 {
-			addText(output, fmt.Sprintf("Received\n\n%s\n", Bytes2String(rcv_packet.Bytes())))
+			addText(output, fmt.Sprintf("Received\n\n%s\n", rcv_packet.HexString()))
 			addText(output, fmt.Sprintf("%s\n", rcv_packet.String()))
 		}
 

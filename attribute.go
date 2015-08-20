@@ -124,25 +124,18 @@ var attribute_names = map[uint16]string{
 }
 
 // This structure represents a message's attribute of a STUM message.
+// RFC 5389: The value in the length field MUST contain the length of the Value
+//           part of the attribute, prior to padding, measured in bytes.  Since
+//           STUN aligns attributes on 32-bit boundaries, attributes whose content
+//           is not a multiple of 4 bytes are padded with 1, 2, or 3 bytes of
+//           padding so that its value contains a multiple of 4 bytes.  The
+//           padding bits are ignored, and may be any value.
+//
+// **BUT** RFC 5389 says that the **real** length must be a multiple of 4! (no padding)
 type Attribute struct {
-	// The attribute's type (constant ATTRIBUTE_...).
-	Type uint16 // 16 bits
-
-	// The length of the attribute.
-	// RFC 5389: The value in the length field MUST contain the length of the Value
-	//           part of the attribute, prior to padding, measured in bytes.  Since
-	//           STUN aligns attributes on 32-bit boundaries, attributes whose content
-	//           is not a multiple of 4 bytes are padded with 1, 2, or 3 bytes of
-	//           padding so that its value contains a multiple of 4 bytes.  The
-	//           padding bits are ignored, and may be any value.
-	//
-	// **BUT** RFC 5389 says that the **real** length must be a multiple of 4! (no padding)
-	Length uint16 // 16 bits
-
-	// The attribute's value.
-	Value []byte // variable number of bytes
-
-	// The packet which the attribute belongs to.
+	Type   uint16  // The attribute's type (constant ATTRIBUTE_...), 16 bits
+	Length uint16  // The length of the attribute, 16 bits
+	Value  []byte  // The attribute's value.
 	Packet *Packet // the packet that contains this attribute
 }
 
@@ -162,13 +155,13 @@ type Attribute struct {
 // OUTPUT
 // - The new attribute.
 // - The error flag.
-func MakeAttribute(_type uint16, value []byte, packet *Packet) (Attribute, error) {
-	var attr Attribute
-
+func MakeAttribute(_type uint16, value []byte, packet *Packet) (attr Attribute, err error) {
 	if (0 != len(value)%4) && (rfc == RFC3489) {
-		return attr, errors.New("STUN is configured to be compliant with RFC 3489! Value's length must be a multiple of 4 bytes!")
+		err = errors.New("STUN is configured to be compliant with RFC 3489! Value's length must be a multiple of 4 bytes!")
+		return
 	} else if len(value) > 65535 {
-		return attr, fmt.Errorf("Can not create new attribute: attribute's value is too long (%d bytes)", len(value))
+		err = fmt.Errorf("Can not create new attribute: attribute's value is too long (%d bytes)", len(value))
+		return
 	}
 
 	b := padding(value)
