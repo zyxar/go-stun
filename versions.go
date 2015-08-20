@@ -16,15 +16,15 @@
 package stun
 
 const (
-	STUN_RFC_3489 = 0
-	STUN_RFC_5389 = 0
+	RFC3489 = 0
+	RFC5389 = 0
 )
 
 // The chosen RFC used for compliance.
-var rfc int = STUN_RFC_3489
+var rfc int = RFC3489
 
 // Set RFC to 3489.
-func SetRfc3489() { rfc = STUN_RFC_3489 }
+func SetRfc3489() { rfc = RFC3489 }
 
 // Set RFC to 5389
-func SetRfc5389() { rfc = STUN_RFC_5389 }
+func SetRfc5389() { rfc = RFC5389 }

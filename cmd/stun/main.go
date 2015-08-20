@@ -107,23 +107,23 @@ func main() {
 	fmt.Println("\n\nCONCLUSION\n")
 
 	switch nat {
-	case stun.STUN_NAT_ERROR:
+	case stun.NAT_ERROR:
 		fmt.Println(fmt.Sprintf("Test failed: %s", err))
-	case stun.STUN_NAT_BLOCKED:
+	case stun.NAT_BLOCKED:
 		fmt.Println(fmt.Sprintf("UDP is blocked."))
-	case stun.STUN_NAT_UNKNOWN:
+	case stun.NAT_UNKNOWN:
 		fmt.Println(fmt.Sprintf("Unexpected response from the STUN server. All we can say is that we are behind a NAT."))
-	case stun.STUN_NAT_FULL_CONE:
+	case stun.NAT_FULL_CONE:
 		fmt.Println(fmt.Sprintf("We are behind a full cone NAT."))
-	case stun.STUN_NAT_SYMETRIC:
+	case stun.NAT_SYMETRIC:
 		fmt.Println(fmt.Sprintf("We are behind a symetric NAT."))
-	case stun.STUN_NAT_RESTRICTED:
+	case stun.NAT_RESTRICTED:
 		fmt.Println(fmt.Sprintf("We are behind a restricted NAT."))
-	case stun.STUN_NAT_PORT_RESTRICTED:
+	case stun.NAT_PORT_RESTRICTED:
 		fmt.Println(fmt.Sprintf("We are behind a port restricted NAT."))
-	case stun.STUN_NAT_NO_NAT:
+	case stun.NAT_NO_NAT:
 		fmt.Println(fmt.Sprintf("We are not behind a NAT."))
-	case stun.STUN_NAT_SYMETRIC_UDP_FIREWALL:
+	case stun.NAT_SYMETRIC_UDP_FIREWALL:
 		fmt.Println(fmt.Sprintf("We are behind a symetric UDP firewall."))
 	}
 }

@@ -16,118 +16,116 @@
 package stun
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"hash/crc32"
 	"unicode/utf8"
 )
 
 const (
-	STUN_ATTRIBUT_FAMILY_IPV4 = 0x01 // IP family is IPV4
-	STUN_ATTRIBUT_FAMILY_IPV6 = 0x02 // IP family is IPV6
+	ATTRIBUTE_FAMILY_IPV4 = 0x01 // IP family is IPV4
+	ATTRIBUTE_FAMILY_IPV6 = 0x02 // IP family is IPV6
 
 	/* ------------------------------------------------------------------------------------------------ */
 	/* Attributes' types.                                                                               */
 	/* See: Session Traversal Utilities for NAT (STUN) Parameters                                       */
 	/*      http://www.iana.org/assignments/stun-parameters/stun-parameters.xml                         */
-	/* Note: Value STUN_ATTRIBUT_XOR_MAPPED_ADDRESS_EXP is not mentioned in the above document.         */
+	/* Note: Value ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP is not mentioned in the above document.         */
 	/*       But it is used by servers.                                                                 */
 	/* ------------------------------------------------------------------------------------------------ */
-	STUN_ATTRIBUT_MAPPED_ADDRESS           = 0x0001
-	STUN_ATTRIBUT_RESPONSE_ADDRESS         = 0x0002
-	STUN_ATTRIBUT_CHANGE_REQUEST           = 0x0003
-	STUN_ATTRIBUT_SOURCE_ADDRESS           = 0x0004
-	STUN_ATTRIBUT_CHANGED_ADDRESS          = 0x0005
-	STUN_ATTRIBUT_USERNAME                 = 0x0006
-	STUN_ATTRIBUT_PASSWORD                 = 0x0007
-	STUN_ATTRIBUT_MESSAGE_INTEGRITY        = 0x0008
-	STUN_ATTRIBUT_ERROR_CODE               = 0x0009
-	STUN_ATTRIBUT_UNKNOWN_ATTRIBUTES       = 0x000A
-	STUN_ATTRIBUT_REFLECTED_FROM           = 0x000B
-	STUN_ATTRIBUT_CHANNEL_NUMBER           = 0x000C
-	STUN_ATTRIBUT_LIFETIME                 = 0x000D
-	STUN_ATTRIBUT_BANDWIDTH                = 0x0010
-	STUN_ATTRIBUT_XOR_PEER_ADDRESS         = 0x0012
-	STUN_ATTRIBUT_DATA                     = 0x0013
-	STUN_ATTRIBUT_REALM                    = 0x0014
-	STUN_ATTRIBUT_NONCE                    = 0x0015
-	STUN_ATTRIBUT_XOR_RELAYED_ADDRESS      = 0x0016
-	STUN_ATTRIBUT_REQUESTED_ADDRESS_FAMILY = 0x0017
-	STUN_ATTRIBUT_EVEN_PORT                = 0x0018
-	STUN_ATTRIBUT_REQUESTED_TRANSPORT      = 0x0019
-	STUN_ATTRIBUT_DONT_FRAGMENT            = 0x001A
-	STUN_ATTRIBUT_XOR_MAPPED_ADDRESS       = 0x0020
-	STUN_ATTRIBUT_TIMER_VAL                = 0x0021
-	STUN_ATTRIBUT_RESERVATION_TOKEN        = 0x0022
-	STUN_ATTRIBUT_PRIORITY                 = 0x0024
-	STUN_ATTRIBUT_USE_CANDIDATE            = 0x0025
-	STUN_ATTRIBUT_PADDING                  = 0x0026
-	STUN_ATTRIBUT_RESPONSE_PORT            = 0x0027
-	STUN_ATTRIBUT_CONNECTION_ID            = 0x002A
-	STUN_ATTRIBUT_XOR_MAPPED_ADDRESS_EXP   = 0x8020
-	STUN_ATTRIBUT_SOFTWARE                 = 0x8022
-	STUN_ATTRIBUT_ALTERNATE_SERVER         = 0x8023
-	STUN_ATTRIBUT_CACHE_TIMEOUT            = 0x8027
-	STUN_ATTRIBUT_FINGERPRINT              = 0x8028
-	STUN_ATTRIBUT_ICE_CONTROLLED           = 0x8029
-	STUN_ATTRIBUT_ICE_CONTROLLING          = 0x802A
-	STUN_ATTRIBUT_RESPONSE_ORIGIN          = 0x802B
-	STUN_ATTRIBUT_OTHER_ADDRESS            = 0x802C
-	STUN_ATTRIBUT_ECN_CHECK_STUN           = 0x802D
-	STUN_ATTRIBUT_CISCO_STUN_FLOWDATA      = 0xC000
+	ATTRIBUTE_MAPPED_ADDRESS           = 0x0001
+	ATTRIBUTE_RESPONSE_ADDRESS         = 0x0002
+	ATTRIBUTE_CHANGE_REQUEST           = 0x0003
+	ATTRIBUTE_SOURCE_ADDRESS           = 0x0004
+	ATTRIBUTE_CHANGED_ADDRESS          = 0x0005
+	ATTRIBUTE_USERNAME                 = 0x0006
+	ATTRIBUTE_PASSWORD                 = 0x0007
+	ATTRIBUTE_MESSAGE_INTEGRITY        = 0x0008
+	ATTRIBUTE_ERROR_CODE               = 0x0009
+	ATTRIBUTE_UNKNOWN_ATTRIBUTES       = 0x000A
+	ATTRIBUTE_REFLECTED_FROM           = 0x000B
+	ATTRIBUTE_CHANNEL_NUMBER           = 0x000C
+	ATTRIBUTE_LIFETIME                 = 0x000D
+	ATTRIBUTE_BANDWIDTH                = 0x0010
+	ATTRIBUTE_XOR_PEER_ADDRESS         = 0x0012
+	ATTRIBUTE_DATA                     = 0x0013
+	ATTRIBUTE_REALM                    = 0x0014
+	ATTRIBUTE_NONCE                    = 0x0015
+	ATTRIBUTE_XOR_RELAYED_ADDRESS      = 0x0016
+	ATTRIBUTE_REQUESTED_ADDRESS_FAMILY = 0x0017
+	ATTRIBUTE_EVEN_PORT                = 0x0018
+	ATTRIBUTE_REQUESTED_TRANSPORT      = 0x0019
+	ATTRIBUTE_DONT_FRAGMENT            = 0x001A
+	ATTRIBUTE_XOR_MAPPED_ADDRESS       = 0x0020
+	ATTRIBUTE_TIMER_VAL                = 0x0021
+	ATTRIBUTE_RESERVATION_TOKEN        = 0x0022
+	ATTRIBUTE_PRIORITY                 = 0x0024
+	ATTRIBUTE_USE_CANDIDATE            = 0x0025
+	ATTRIBUTE_PADDING                  = 0x0026
+	ATTRIBUTE_RESPONSE_PORT            = 0x0027
+	ATTRIBUTE_CONNECTION_ID            = 0x002A
+	ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP   = 0x8020
+	ATTRIBUTE_SOFTWARE                 = 0x8022
+	ATTRIBUTE_ALTERNATE_SERVER         = 0x8023
+	ATTRIBUTE_CACHE_TIMEOUT            = 0x8027
+	ATTRIBUTE_FINGERPRINT              = 0x8028
+	ATTRIBUTE_ICE_CONTROLLED           = 0x8029
+	ATTRIBUTE_ICE_CONTROLLING          = 0x802A
+	ATTRIBUTE_RESPONSE_ORIGIN          = 0x802B
+	ATTRIBUTE_OTHER_ADDRESS            = 0x802C
+	ATTRIBUTE_ECN_CHECK_STUN           = 0x802D
+	ATTRIBUTE_CISCO_STUN_FLOWDATA      = 0xC000
 )
 
 // This map associates an attribute's value to a attribute's name.
 var attribute_names = map[uint16]string{
-	STUN_ATTRIBUT_MAPPED_ADDRESS:           "MAPPED_ADDRESS",
-	STUN_ATTRIBUT_RESPONSE_ADDRESS:         "RESPONSE_ADDRESS",
-	STUN_ATTRIBUT_CHANGE_REQUEST:           "CHANGE_REQUEST",
-	STUN_ATTRIBUT_SOURCE_ADDRESS:           "SOURCE_ADDRESS",
-	STUN_ATTRIBUT_CHANGED_ADDRESS:          "CHANGED_ADDRESS",
-	STUN_ATTRIBUT_USERNAME:                 "USERNAME",
-	STUN_ATTRIBUT_PASSWORD:                 "PASSWORD",
-	STUN_ATTRIBUT_MESSAGE_INTEGRITY:        "MESSAGE_INTEGRITY",
-	STUN_ATTRIBUT_ERROR_CODE:               "ERROR_CODE",
-	STUN_ATTRIBUT_UNKNOWN_ATTRIBUTES:       "UNKNOWN_ATTRIBUTES",
-	STUN_ATTRIBUT_REFLECTED_FROM:           "REFLECTED_FROM",
-	STUN_ATTRIBUT_CHANNEL_NUMBER:           "CHANNEL_NUMBER",
-	STUN_ATTRIBUT_LIFETIME:                 "LIFETIME",
-	STUN_ATTRIBUT_BANDWIDTH:                "BANDWIDTH",
-	STUN_ATTRIBUT_XOR_PEER_ADDRESS:         "XOR_PEER_ADDRESS",
-	STUN_ATTRIBUT_DATA:                     "DATA",
-	STUN_ATTRIBUT_REALM:                    "REALM",
-	STUN_ATTRIBUT_NONCE:                    "NONCE",
-	STUN_ATTRIBUT_XOR_RELAYED_ADDRESS:      "XOR_RELAYED_ADDRESS",
-	STUN_ATTRIBUT_REQUESTED_ADDRESS_FAMILY: "REQUESTED_ADDRESS_FAMILY",
-	STUN_ATTRIBUT_EVEN_PORT:                "EVEN_PORT",
-	STUN_ATTRIBUT_REQUESTED_TRANSPORT:      "REQUESTED_TRANSPORT",
-	STUN_ATTRIBUT_DONT_FRAGMENT:            "DONT_FRAGMENT",
-	STUN_ATTRIBUT_XOR_MAPPED_ADDRESS:       "XOR_MAPPED_ADDRESS",
-	STUN_ATTRIBUT_TIMER_VAL:                "TIMER_VAL",
-	STUN_ATTRIBUT_RESERVATION_TOKEN:        "RESERVATION_TOKEN",
-	STUN_ATTRIBUT_PRIORITY:                 "PRIORITY",
-	STUN_ATTRIBUT_USE_CANDIDATE:            "USE_CANDIDATE",
-	STUN_ATTRIBUT_PADDING:                  "PADDING",
-	STUN_ATTRIBUT_RESPONSE_PORT:            "RESPONSE_PORT",
-	STUN_ATTRIBUT_CONNECTION_ID:            "CONNECTION_ID",
-	STUN_ATTRIBUT_XOR_MAPPED_ADDRESS_EXP:   "XOR_MAPPED_ADDRESS",
-	STUN_ATTRIBUT_SOFTWARE:                 "SOFTWARE",
-	STUN_ATTRIBUT_ALTERNATE_SERVER:         "ALTERNATE_SERVER",
-	STUN_ATTRIBUT_CACHE_TIMEOUT:            "CACHE_TIMEOUT",
-	STUN_ATTRIBUT_FINGERPRINT:              "FINGERPRINT",
-	STUN_ATTRIBUT_ICE_CONTROLLED:           "ICE_CONTROLLED",
-	STUN_ATTRIBUT_ICE_CONTROLLING:          "ICE_CONTROLLING",
-	STUN_ATTRIBUT_RESPONSE_ORIGIN:          "RESPONSE_ORIGIN",
-	STUN_ATTRIBUT_OTHER_ADDRESS:            "OTHER_ADDRESS",
-	STUN_ATTRIBUT_ECN_CHECK_STUN:           "ECN_CHECK_STUN",
-	STUN_ATTRIBUT_CISCO_STUN_FLOWDATA:      "CISCO_STUN_FLOWDATA",
+	ATTRIBUTE_MAPPED_ADDRESS:           "MAPPED_ADDRESS",
+	ATTRIBUTE_RESPONSE_ADDRESS:         "RESPONSE_ADDRESS",
+	ATTRIBUTE_CHANGE_REQUEST:           "CHANGE_REQUEST",
+	ATTRIBUTE_SOURCE_ADDRESS:           "SOURCE_ADDRESS",
+	ATTRIBUTE_CHANGED_ADDRESS:          "CHANGED_ADDRESS",
+	ATTRIBUTE_USERNAME:                 "USERNAME",
+	ATTRIBUTE_PASSWORD:                 "PASSWORD",
+	ATTRIBUTE_MESSAGE_INTEGRITY:        "MESSAGE_INTEGRITY",
+	ATTRIBUTE_ERROR_CODE:               "ERROR_CODE",
+	ATTRIBUTE_UNKNOWN_ATTRIBUTES:       "UNKNOWN_ATTRIBUTES",
+	ATTRIBUTE_REFLECTED_FROM:           "REFLECTED_FROM",
+	ATTRIBUTE_CHANNEL_NUMBER:           "CHANNEL_NUMBER",
+	ATTRIBUTE_LIFETIME:                 "LIFETIME",
+	ATTRIBUTE_BANDWIDTH:                "BANDWIDTH",
+	ATTRIBUTE_XOR_PEER_ADDRESS:         "XOR_PEER_ADDRESS",
+	ATTRIBUTE_DATA:                     "DATA",
+	ATTRIBUTE_REALM:                    "REALM",
+	ATTRIBUTE_NONCE:                    "NONCE",
+	ATTRIBUTE_XOR_RELAYED_ADDRESS:      "XOR_RELAYED_ADDRESS",
+	ATTRIBUTE_REQUESTED_ADDRESS_FAMILY: "REQUESTED_ADDRESS_FAMILY",
+	ATTRIBUTE_EVEN_PORT:                "EVEN_PORT",
+	ATTRIBUTE_REQUESTED_TRANSPORT:      "REQUESTED_TRANSPORT",
+	ATTRIBUTE_DONT_FRAGMENT:            "DONT_FRAGMENT",
+	ATTRIBUTE_XOR_MAPPED_ADDRESS:       "XOR_MAPPED_ADDRESS",
+	ATTRIBUTE_TIMER_VAL:                "TIMER_VAL",
+	ATTRIBUTE_RESERVATION_TOKEN:        "RESERVATION_TOKEN",
+	ATTRIBUTE_PRIORITY:                 "PRIORITY",
+	ATTRIBUTE_USE_CANDIDATE:            "USE_CANDIDATE",
+	ATTRIBUTE_PADDING:                  "PADDING",
+	ATTRIBUTE_RESPONSE_PORT:            "RESPONSE_PORT",
+	ATTRIBUTE_CONNECTION_ID:            "CONNECTION_ID",
+	ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP:   "XOR_MAPPED_ADDRESS",
+	ATTRIBUTE_SOFTWARE:                 "SOFTWARE",
+	ATTRIBUTE_ALTERNATE_SERVER:         "ALTERNATE_SERVER",
+	ATTRIBUTE_CACHE_TIMEOUT:            "CACHE_TIMEOUT",
+	ATTRIBUTE_FINGERPRINT:              "FINGERPRINT",
+	ATTRIBUTE_ICE_CONTROLLED:           "ICE_CONTROLLED",
+	ATTRIBUTE_ICE_CONTROLLING:          "ICE_CONTROLLING",
+	ATTRIBUTE_RESPONSE_ORIGIN:          "RESPONSE_ORIGIN",
+	ATTRIBUTE_OTHER_ADDRESS:            "OTHER_ADDRESS",
+	ATTRIBUTE_ECN_CHECK_STUN:           "ECN_CHECK_STUN",
+	ATTRIBUTE_CISCO_STUN_FLOWDATA:      "CISCO_STUN_FLOWDATA",
 }
 
 // This structure represents a message's attribute of a STUM message.
-type StunAttribute struct {
-	// The attribute's type (constant STUN_ATTRIBUT_...).
+type Attribute struct {
+	// The attribute's type (constant ATTRIBUTE_...).
 	Type uint16 // 16 bits
 
 	// The length of the attribute.
@@ -157,41 +155,37 @@ type StunAttribute struct {
 // Create a message's attribute.
 //
 // INPUT
-// - in_type: attribute's type.
-// - in_value: attribute's value.
-// - in_packet: pointer to the packet that contains the attribute.
+// - _type: attribute's type.
+// - value: attribute's value.
+// - packet: pointer to the packet that contains the attribute.
 //
 // OUTPUT
 // - The new attribute.
 // - The error flag.
-func AttributeCreate(in_type uint16, in_value []byte, in_packet *Packet) (StunAttribute, error) {
-	var a StunAttribute
+func MakeAttribute(_type uint16, value []byte, packet *Packet) (Attribute, error) {
+	var attr Attribute
 
-	if (0 != len(in_value)%4) && (rfc == STUN_RFC_3489) {
-		return a, errors.New("STUN is configured to be compliant with RFC 3489! Value's length must be a multiple of 4 bytes!")
+	if (0 != len(value)%4) && (rfc == RFC3489) {
+		return attr, errors.New("STUN is configured to be compliant with RFC 3489! Value's length must be a multiple of 4 bytes!")
+	} else if len(value) > 65535 {
+		return attr, fmt.Errorf("Can not create new attribute: attribute's value is too long (%d bytes)", len(value))
 	}
 
-	padded := __padding(in_value)
-	a.Type = in_type
-	a.Value = make([]byte, len(padded), len(padded))
-
-	if len(in_value) > 65535 {
-		return a, errors.New(fmt.Sprintf("Can not create new attribute: attribute's value is too long (%d bytes)", len(in_value)))
-	}
-	a.Length = uint16(len(in_value))
-
-	// fmt.Println(fmt.Sprintf("Create attribute with: % x (%d *real* bytes)", padded, a.Length))
-
-	copy(a.Value, padded)
-	a.Packet = in_packet
-	return a, nil
+	b := padding(value)
+	leng := len(b)
+	attr.Type = _type
+	attr.Value = make([]byte, leng)
+	attr.Length = uint16(len(value))
+	copy(attr.Value, b)
+	attr.Packet = packet
+	return attr, nil
 }
 
 // This function creates a "FINGERPRINT" attribute.
 // See http://golang.org/src/pkg/hash/crc32/crc32.go
 //
 // INPUT
-// - in_packet: Pointer to the STUN packet that is used to calculate the fingerprint.
+// - packet: Pointer to the STUN packet that is used to calculate the fingerprint.
 //
 // OUTPUT
 // - The STUN's attribute.
@@ -199,83 +193,58 @@ func AttributeCreate(in_type uint16, in_value []byte, in_packet *Packet) (StunAt
 //
 // WARNING
 // The FINGERPRINT attribute should be the last attribute of the STUN packet.
-func AttributeCreateFingerprint(in_packet *Packet) (StunAttribute, error) {
-	var err error
-	var res StunAttribute
-	buf := new(bytes.Buffer)
-
-	crc := __stunCrc32(in_packet.Bytes())
-
-	err = binary.Write(buf, binary.BigEndian, crc)
-	if nil != err {
-		panic("Internal error")
-	}
-
-	// Note: the value is 4 bytes long.
-	res, err = AttributeCreate(STUN_ATTRIBUT_FINGERPRINT, buf.Bytes(), in_packet)
-	if nil != err {
-		return res, err
-	}
-
-	return res, nil
+func MakeFingerprintAttribute(packet *Packet) (attr Attribute, err error) {
+	crc := crc32Checksum(packet.Bytes())
+	b := make([]byte, 4)
+	binary.BigEndian.PutUint32(b, crc)
+	attr, err = MakeAttribute(ATTRIBUTE_FINGERPRINT, b, packet)
+	return
 }
 
 // This function creates a "SOFTWARE" attribute.
 //
 // INPUT
-// - in_packet: pointer to the STUN packet.
-// - in_name: name of the software.
+// - packet: pointer to the STUN packet.
+// - name: name of the software.
 //
 // OUTPUT
 // - The STUN's attribute.
 // - The error flag.
-func AttributeCreateSoftware(in_packet *Packet, in_name string) (StunAttribute, error) {
-	var err error
-	var res StunAttribute
-	name := []byte(in_name)
-
+func MakeSoftwareAttribute(packet *Packet, name string) (attr Attribute, err error) {
 	if len(name) > 763 {
-		return res, errors.New("Software's name if too long (more than 763 bytes!)")
+		err = errors.New("Software's name if too long (more than 763 bytes!)")
+		return
 	}
-
-	res, err = AttributeCreate(STUN_ATTRIBUT_SOFTWARE, name, in_packet)
-	if nil != err {
-		return res, err
-	}
-	return res, nil
+	b := []byte(name)
+	attr, err = MakeAttribute(ATTRIBUTE_SOFTWARE, b, packet)
+	return
 }
 
 // This function creates a "CHANGE RESQUEST" attribute.
 //
 // INPUT
-// - in_packet: pointer to the STUN packet.
-// - in_ip: shall we change the IP address?
-// - in_port: shall we change the port number?
+// - packet: pointer to the STUN packet.
+// - changIP: shall we change the IP address?
+// - changPort: shall we change the port number?
 //
 // OUTPUT
 // - The STUN's attribute.
 // - The error flag.
-func AttributeCreateChangeRequest(in_packet *Packet, in_ip bool, in_port bool) (StunAttribute, error) {
-	var err error
-	var res StunAttribute
+func MakeChangeRequestAttribute(packet *Packet, changIP, changPort bool) (attr Attribute, err error) {
 	var value []byte = make([]byte, 4, 4)
 
 	// RFC 3489: The CHANGE-REQUEST attribute is used by the client to request that
 	// the server use a different address and/or port when sending the
 	// response.  The attribute is 32 bits long, although only two bits (A
 	// and B) are used.
-	if in_ip {
+	if changIP {
 		value[3] = value[3] | 0x04
 	} // b:0100
-	if in_port {
+	if changPort {
 		value[3] = value[3] | 0x02
 	} // b:0010
-
-	res, err = AttributeCreate(STUN_ATTRIBUT_CHANGE_REQUEST, value, in_packet)
-	if nil != err {
-		return res, err
-	}
-	return res, nil
+	attr, err = MakeAttribute(ATTRIBUTE_CHANGE_REQUEST, value, packet)
+	return
 }
 
 /* ------------------------------------------------------------------------------------------------ */
@@ -291,8 +260,8 @@ func AttributeCreateChangeRequest(in_packet *Packet, in_ip bool, in_port bool) (
 //   + Example for IPV6: "0011:2233:4455:6677:8899:AABB:CCDD:EEFF"
 // - The port number.
 // - The error flag.
-func (v *StunAttribute) AttributeGetMappedAddress() (uint16, string, uint16, error) {
-	return v.__getAddress()
+func (attr Attribute) MappedAddress() (uint16, string, uint16, error) {
+	return attr.getAddress()
 }
 
 // Given an attribute that represents a "source" address, this function returns the transport address.
@@ -304,8 +273,8 @@ func (v *StunAttribute) AttributeGetMappedAddress() (uint16, string, uint16, err
 //   + Example for IPV6: "0011:2233:4455:6677:8899:AABB:CCDD:EEFF"
 // - The port number.
 // - The error flag.
-func (v *StunAttribute) AttributeGetSourceAddress() (uint16, string, uint16, error) {
-	return v.__getAddress()
+func (attr Attribute) SourceAddress() (uint16, string, uint16, error) {
+	return attr.getAddress()
 }
 
 // Given an attribute that represents a "changed" address, this function returns the transport address.
@@ -317,8 +286,8 @@ func (v *StunAttribute) AttributeGetSourceAddress() (uint16, string, uint16, err
 //   + Example for IPV6: "0011:2233:4455:6677:8899:AABB:CCDD:EEFF"
 // - The port number.
 // - The error flag.
-func (v *StunAttribute) AttributeGetChangeedAddress() (uint16, string, uint16, error) {
-	return v.__getAddress()
+func (attr Attribute) ChangedAddress() (uint16, string, uint16, error) {
+	return attr.getAddress()
 }
 
 // Given an attribute that represents a "XOR mapped" address, this function returns the transport address.
@@ -333,84 +302,61 @@ func (v *StunAttribute) AttributeGetChangeedAddress() (uint16, string, uint16, e
 // - The XORED IP address (should be equal to the mapped address).
 // - The XORED port (should be equal to the mapped port).
 // - The error flag.
-func (v *StunAttribute) AttributeGetXorMappedAddress() (uint16, string, uint16, string, uint16, error) {
-	var family, port uint16
-	var ip_string string
-	var xored_ip_string string
-	var err error
-	var cookie []byte = []byte{0x21, 0x12, 0xA4, 0x42} // 0x2112A442
-	var xored_ip []byte = make([]byte, 0, 16)
-	var xored_port uint16
+//family, ip_string, port, xored_ip_string, xored_port, nil
+func (attr Attribute) XorMappedAddress() (family uint16, addr string, port uint16, addr_xor string, port_xor uint16, err error) {
+	cookie := []byte{0x21, 0x12, 0xA4, 0x42} // 0x2112A442
+	xored_ip := make([]byte, 0, 16)
 
-	err = binary.Read(bytes.NewBuffer(v.Value[0:2]), binary.BigEndian, &family)
-	if nil != err {
-		return 0, "", 0, "", 0, err
+	family = binary.BigEndian.Uint16(attr.Value[0:2])
+	if (ATTRIBUTE_FAMILY_IPV4 != family) && (ATTRIBUTE_FAMILY_IPV6 != family) {
+		err = fmt.Errorf("Invalid address' family: 0x%02x", family)
+		return
 	}
-
-	if (STUN_ATTRIBUT_FAMILY_IPV4 != family) && (STUN_ATTRIBUT_FAMILY_IPV6 != family) {
-		return 0, "", 0, "", 0, errors.New(fmt.Sprintf("Invalid address' family: 0x%02x", family))
+	if addr, err = BytesToIp(attr.Value[4:]); nil != err {
+		return
 	}
+	port = binary.BigEndian.Uint16(attr.Value[2:4])
 
-	err = binary.Read(bytes.NewBuffer(v.Value[2:4]), binary.BigEndian, &port)
-	if nil != err {
-		return family, "", 0, "", 0, err
-	}
-
-	if STUN_ATTRIBUT_FAMILY_IPV4 == family { // IPV4
-		if len(v.Value[4:]) != 4 {
-			return 0, "", 0, "", 0, errors.New(fmt.Sprintf("Invalid IPV4 address: % x", v.Value[4:]))
+	if ATTRIBUTE_FAMILY_IPV4 == family { // IPV4
+		if len(attr.Value[4:]) != 4 {
+			err = fmt.Errorf("Invalid IPV4 address: % x", attr.Value[4:])
+			return
 		}
 		for i := 0; i < 4; i++ {
-			xored_ip = append(xored_ip, v.Value[i+4]^cookie[i])
+			xored_ip = append(xored_ip, attr.Value[i+4]^cookie[i])
 		}
 	} else { // IPV6
-		var long_magic []byte = make([]byte, 0, 16)
-
-		if len(v.Value[4:]) != 16 {
-			return 0, "", 0, "", 0, errors.New(fmt.Sprintf("Invalid IPV6 address: % x", v.Value[4:]))
+		if len(attr.Value[4:]) != 16 {
+			err = fmt.Errorf("Invalid IPV6 address: % x", attr.Value[4:])
+			return
 		}
-		long_magic = append(long_magic, cookie...)
-		long_magic = append(long_magic, v.Packet.id[0:12]...)
+		// long_magic := make([]byte, 0, 16)
+		// long_magic = append(long_magic, cookie...)
+		// long_magic = append(long_magic, attr.Packet.id[0:12]...)
 		for i := 0; i < 16; i++ {
-			xored_ip = append(xored_ip, v.Value[i+4]^cookie[i])
+			xored_ip = append(xored_ip, attr.Value[i+4]^cookie[i])
 		}
 	}
-
-	// Calculate the values to return.
-	// - family
-	// - ip_string
-	// - port
-	// - xored_ip_string
-	// - xored_port
-
-	ip_string, err = BytesToIp(v.Value[4:])
-	if nil != err {
-		return 0, "", 0, "", 0, err
+	if addr_xor, err = BytesToIp(xored_ip); nil != err {
+		return
 	}
-
-	xored_ip_string, err = BytesToIp(xored_ip)
-	if nil != err {
-		return 0, "", 0, "", 0, err
-	}
-
-	xored_port = port ^ 0x2112
-
-	return family, ip_string, port, xored_ip_string, xored_port, nil
+	port_xor = port ^ 0x2112
+	return
 }
 
 // Given an attribute that represents a "SOFTWARE" attribute, this function returns the name of the software.
 //
 // OUTPUT
 // - The name of the software.
-func (v *StunAttribute) AttributeGetSoftware() string {
-	for i := 0; i < len(v.Value); i++ {
-		r, size := utf8.DecodeRune(v.Value[i:])
+func (attr Attribute) Software() string {
+	for i := 0; i < len(attr.Value); {
+		r, size := utf8.DecodeRune(attr.Value[i:])
 		if utf8.RuneError == r {
 			return "Can not convert this list of bytes into a string. It is not UTF8 encoded."
 		}
-		i += size - 1
+		i += size
 	}
-	return string(v.Value)
+	return string(attr.Value)
 }
 
 // This function returns a 32-bit integer that represents the fingerprint.
@@ -418,18 +364,13 @@ func (v *StunAttribute) AttributeGetSoftware() string {
 // OUTPUT
 // - The fingerprint.
 // - The error flag.
-func (v *StunAttribute) AttributeGetFingerprint() (uint32, error) {
-	var crc uint32
-
-	if 4 != len(v.Value) {
-		return 0xFFFFFFFF, errors.New(fmt.Sprintf("Invalid fingerprint (% x)", v.Value))
+func (attr Attribute) Fingerprint() (crc uint32, err error) {
+	if 4 != len(attr.Value) {
+		err = fmt.Errorf("Invalid fingerprint (% x)", attr.Value)
+		return
 	}
-
-	err := binary.Read(bytes.NewBuffer(v.Value), binary.BigEndian, &crc)
-	if nil != err {
-		return 0xFFFFFFFF, err
-	}
-	return crc, nil
+	crc = binary.BigEndian.Uint32(attr.Value)
+	return
 }
 
 // This function returns the value of an attribute which type is "REQUEST_CHANGE".
@@ -438,83 +379,57 @@ func (v *StunAttribute) AttributeGetFingerprint() (uint32, error) {
 // - A boolean value that indicates whether IP change is requested or not.
 // - A boolean value that indicates whether port number change is requested or not.
 // - The error flag.
-func (v *StunAttribute) AttributeGetChangeRequest() (bool, bool, error) {
-	if 4 != len(v.Value) {
-		return false, false, errors.New(fmt.Sprintf("Invalid change requested value (% x)", v.Value))
+func (attr Attribute) ChangeRequest() (bool, bool, error) {
+	if 4 != len(attr.Value) {
+		return false, false, fmt.Errorf("Invalid change requested value (% x)", attr.Value)
 	}
-	return (0x04 | v.Value[3]) != 0, (0x02 | v.Value[3]) != 0, nil
+	return (0x04 | attr.Value[3]) != 0, (0x02 | attr.Value[3]) != 0, nil
 }
 
 /* ------------------------------------------------------------------------------------------------ */
 /* Export                                                                                           */
 /* ------------------------------------------------------------------------------------------------ */
 
-// This function returns a textual representation of the attribute, if possible.
-//
-// OUTPUT
-// - The function returns a textual representation of the attribute, if possible.
-// - The flag that indicates whether the function can generate a textual representation of the attribute or not.
-func (v *StunAttribute) String() (string, bool) {
-
-	if STUN_ATTRIBUT_MAPPED_ADDRESS == v.Type ||
-		STUN_ATTRIBUT_SOURCE_ADDRESS == v.Type ||
-		STUN_ATTRIBUT_CHANGED_ADDRESS == v.Type {
-		family, ip, port, err := v.__getAddress()
+// This function returns a textual representation of the attribute, if possible; otherwise null string.
+func (attr Attribute) String() string {
+	switch attr.Type {
+	case ATTRIBUTE_MAPPED_ADDRESS, ATTRIBUTE_SOURCE_ADDRESS, ATTRIBUTE_CHANGED_ADDRESS:
+		family, ip, port, err := attr.getAddress()
 		if nil != err {
-			return "This attribute is not valid.", true
+			return ""
 		}
 		if 0x01 == family {
-			return fmt.Sprintf("IPV4: %s:%d", ip, port), true
+			return fmt.Sprintf("IPV4: %s:%d", ip, port)
 		} else {
-			return fmt.Sprintf("IPV6: [%s]:%d", ip, port), true
+			return fmt.Sprintf("IPV6: [%s]:%d", ip, port)
 		}
-	}
-
-	if STUN_ATTRIBUT_XOR_MAPPED_ADDRESS == v.Type ||
-		STUN_ATTRIBUT_XOR_MAPPED_ADDRESS_EXP == v.Type {
-		family, ip, port, xored_ip, xored_port, err := v.AttributeGetXorMappedAddress()
+	case ATTRIBUTE_XOR_MAPPED_ADDRESS, ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP:
+		family, ip, port, xored_ip, xored_port, err := attr.XorMappedAddress()
 		if nil != err {
-			return "This attribute is not valid.", true
+			return ""
 		}
 		if 0x01 == family {
-			return fmt.Sprintf("IPV4: %s:%d => %s:%d", ip, port, xored_ip, xored_port), true
+			return fmt.Sprintf("IPV4: %s:%d => %s:%d", ip, port, xored_ip, xored_port)
 		} else {
-			return fmt.Sprintf("IPV6: [%s]:%d => [%s]:%d", ip, port, xored_ip, xored_port), true
+			return fmt.Sprintf("IPV6: [%s]:%d => [%s]:%d", ip, port, xored_ip, xored_port)
 		}
-	}
-
-	if STUN_ATTRIBUT_SOFTWARE == v.Type {
-		return v.AttributeGetSoftware(), true
-	}
-
-	if STUN_ATTRIBUT_FINGERPRINT == v.Type {
-		crc, err := v.AttributeGetFingerprint()
+	case ATTRIBUTE_SOFTWARE:
+		return attr.Software()
+	case ATTRIBUTE_FINGERPRINT:
+		if crc, err := attr.Fingerprint(); nil != err {
+			return ""
+		} else {
+			return fmt.Sprintf("0x%08x", crc)
+		}
+	case ATTRIBUTE_CHANGE_REQUEST:
+		ip, port, err := attr.ChangeRequest()
 		if nil != err {
-			return fmt.Sprintf("This attribute is not valid: %s", err), true
+			return ""
 		}
-		return fmt.Sprintf("0x%08x", crc), true
+		return fmt.Sprintf("Change IP: %v Change port: %v", ip, port)
+	default:
 	}
-
-	if STUN_ATTRIBUT_CHANGE_REQUEST == v.Type {
-		ip, port, err := v.AttributeGetChangeRequest()
-		if nil != err {
-			return fmt.Sprintf("This attribute is not valid: %s", err), true
-		}
-		var ips, ports string
-		if ip {
-			ips = "YES"
-		} else {
-			ips = "NO"
-		}
-		if port {
-			ports = "YES"
-		} else {
-			ports = "NO"
-		}
-		return fmt.Sprintf("Change IP: %s Change port: %s", ips, ports), true
-	}
-
-	return "There is no available representation.", false
+	return ""
 }
 
 /* ------------------------------------------------------------------------------------------------ */
@@ -530,74 +445,9 @@ func (v *StunAttribute) String() (string, bool) {
 //   + Example for IPV6: "0011:2233:4455:6677:8899:AABB:CCDD:EEFF"
 // - The port number.
 // - The error flag.
-func (v *StunAttribute) __getAddress() (uint16, string, uint16, error) {
-	var family, port uint16
-	var ip string
-	var err error
-
-	err = binary.Read(bytes.NewBuffer(v.Value[0:2]), binary.BigEndian, &family)
-	if nil != err {
-		return 0, "", 0, err
-	}
-
-	err = binary.Read(bytes.NewBuffer(v.Value[2:4]), binary.BigEndian, &port)
-	if nil != err {
-		return family, "", 0, err
-	}
-
-	ip, err = BytesToIp(v.Value[4:])
-	if nil != err {
-		return family, "", port, errors.New("Invalid IP family.")
-	}
-
-	return family, ip, port, nil
-}
-
-// The function calculates the STUN's fingerprint.
-// RFC 5389: The value of the attribute is computed as the CRC-32 of the STUN message
-//           up to (but excluding) the FINGERPRINT attribute itself, XOR'ed with
-//           the 32-bit value 0x5354554e (the XOR helps in cases where an
-//           application packet is also using CRC-32 in it).
-//
-// INPUT
-// - in_byte: the list of bytes.
-//
-// OUTPUT
-// - The fingerprint.
-//
-// NOTE
-// Test: http://www.armware.dk/RFC/rfc/rfc5769.html
-func __stunCrc32(in_byte []byte) uint32 {
-	return crc32.ChecksumIEEE(in_byte) ^ 0x5354554e
-}
-
-// This function adds zeros prior to a slice of bytes. The length of the resulting slice is a multiple of 4.
-//
-// INPUT
-// - in_byte: the slice of bytes to padd.
-//
-// OUTPUT
-// - The padded slice.
-func __padding(in_byte []byte) []byte {
-	rest := len(in_byte) % 4
-	if 0 == rest {
-		return in_byte
-	}
-	padding := make([]byte, 4-rest, 4-rest) // all zeros
-	return append(in_byte, padding...)
-}
-
-// Given a value, this function calculates the next multiple of 4.
-//
-// INPUT
-// - in_lentgh: the value.
-//
-// OUPUT
-// - The next multiple of 4.
-func __nextBoundary(in_length uint16) uint16 {
-	rest := in_length % 4
-	if 0 == rest {
-		return in_length
-	}
-	return in_length + 4 - rest
+func (attr Attribute) getAddress() (family uint16, ip string, port uint16, err error) {
+	family = binary.BigEndian.Uint16(attr.Value[0:2])
+	port = binary.BigEndian.Uint16(attr.Value[2:4])
+	ip, err = BytesToIp(attr.Value[4:])
+	return
 }
