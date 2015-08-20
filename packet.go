@@ -264,10 +264,10 @@ func makePacket(_type uint16, _length uint16, b []byte) (Packet, error) {
 	}
 	b_len := len(b)
 	if b_len < 20-4 {
-		return pkt, fmt.Errorf("The given list of bytes does not represent a STUN packet. Only %d bytes.", b_len)
+		return pkt, fmt.Errorf("Invalid STUN packet: %d bytes", b_len)
 	}
 	if b_len > 65535-4 {
-		return pkt, fmt.Errorf("The given list of bytes does not represent a STUN packet. %d bytes.", b_len)
+		return pkt, fmt.Errorf("Invalid STUN packet: %d bytes", b_len)
 	}
 
 	// pkt.cookie = binary.BigEndian.Uint32(b[0:4])
@@ -277,7 +277,7 @@ func makePacket(_type uint16, _length uint16, b []byte) (Packet, error) {
 	// For RFC 5389 only:
 	//     Please keep in mind that values contain padding.
 	//     Lengthes of attribltes' values don't include the padding's length.
-	var pos uint16 = 18
+	var pos uint16 = 16
 	for pos < uint16(b_len) {
 		vtype := binary.BigEndian.Uint16(b[pos : pos+2])    // Type of the attribute.
 		length := binary.BigEndian.Uint16(b[pos+2 : pos+4]) // Length of the attribute (without the padding !!!!!!)
@@ -286,13 +286,13 @@ func makePacket(_type uint16, _length uint16, b []byte) (Packet, error) {
 		if nil != err {
 			return pkt, err
 		}
-		pkt.AddAttribute(attribute)
+		pkt.attributes = append(pkt.attributes, attribute)
 
 		// 4 bytes: for the attribute's header.
 		if RFC3489 == rfc {
 			pos += 4 + length
 			if 0 != pos%4 {
-				return pkt, fmt.Errorf("STUN is configured to be compliant with RFC 3489! Value's length must be a multiple of 4 bytes!")
+				return pkt, fmt.Errorf("Invalid value length in attribute")
 			}
 		} else {
 			// RFC 5389 only: we must take care of the padding.

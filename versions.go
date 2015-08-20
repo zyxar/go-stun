@@ -16,8 +16,8 @@
 package stun
 
 const (
-	RFC3489 = 0
-	RFC5389 = 0
+	RFC3489 = iota
+	RFC5389
 )
 
 // The chosen RFC used for compliance.

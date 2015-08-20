@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strings"
 	"time"
 )
 
@@ -100,7 +99,7 @@ func SendRequest(in_connexion net.Conn, in_request Packet) (Packet, bool, error)
 					break
 				}
 				if verbosity > 0 {
-					addText(output, fmt.Sprintf("%sTimeout (%04d ms) exceeded, retry...", strings.Repeat(" ", 4), request_timeout))
+					addText(output, fmt.Sprintf("\tTimeout (%04d ms) exceeded, retry...", request_timeout))
 				}
 				continue
 			}
@@ -113,11 +112,11 @@ func SendRequest(in_connexion net.Conn, in_request Packet) (Packet, bool, error)
 		}
 
 		// Build the packet from the list of bytes.
-		rcv_packet, err = MakePacket(b[0:count])
+		rcv_packet, err = MakePacket(b[:count])
 		if nil != err {
 			// The packet is not valid.
 			if verbosity > 0 {
-				addText(output, fmt.Sprintf("%sThe received packet is not valid. Continue.", strings.Repeat(" ", 4)))
+				addText(output, fmt.Sprintf("\tInvalid Packet: %v. Continue.", err))
 			}
 			continue
 		}
