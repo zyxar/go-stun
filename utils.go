@@ -228,18 +228,3 @@ func MakeTransportAddress(in_ip string, in_port int) (string, error) {
 	}
 	return "", fmt.Errorf("Invalid IP address \"%s\"!", in_ip)
 }
-
-// This function is used to add message to a messages' spool.
-//
-// INPUT
-// - out_text: messages' spool.
-//   If this parameter is nil, then the message will be printed in through the standard output.
-//   Otherwize, the message will be appended to the spool.
-// - in_message: message to add.
-func addText(out_text *[]string, in_message string) {
-	if nil == out_text {
-		fmt.Println(in_message)
-	} else {
-		*out_text = append(*out_text, in_message)
-	}
-}

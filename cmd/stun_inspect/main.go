@@ -23,6 +23,7 @@ import (
 	"strconv"
 
 	"github.com/zyxar/go-stun"
+	"github.com/zyxar/go-stun/client"
 )
 
 func main() {
@@ -91,10 +92,10 @@ func main() {
 	fmt.Printf("\nUsing transport address \"%s\".\n", ip)
 
 	// Perform discovery.
-	stun.ClientInit(ip)
-	stun.ActivateOutput(*verbosityLevel, nil)
+	client.Init(ip)
+	client.ActivateOutput(*verbosityLevel, nil)
 
-	if nat, err = stun.ClientDiscover(); nil != err {
+	if nat, err = client.Discover(); nil != err {
 		fmt.Printf("An error occured: %s\n", err)
 		os.Exit(1)
 	}
@@ -103,23 +104,23 @@ func main() {
 	fmt.Println("\n\nCONCLUSION\n")
 
 	switch nat {
-	case stun.NAT_ERROR:
+	case client.NAT_ERROR:
 		fmt.Println("Test failed:", err)
-	case stun.NAT_BLOCKED:
+	case client.NAT_BLOCKED:
 		fmt.Println("UDP is blocked.")
-	case stun.NAT_UNKNOWN:
+	case client.NAT_UNKNOWN:
 		fmt.Println("Unexpected response from the STUN server. All we can say is that we are behind a NAT.")
-	case stun.NAT_FULL_CONE:
+	case client.NAT_FULL_CONE:
 		fmt.Println("We are behind a full cone NAT.")
-	case stun.NAT_SYMETRIC:
+	case client.NAT_SYMETRIC:
 		fmt.Println("We are behind a symetric NAT.")
-	case stun.NAT_RESTRICTED:
+	case client.NAT_RESTRICTED:
 		fmt.Println("We are behind a restricted NAT.")
-	case stun.NAT_PORT_RESTRICTED:
+	case client.NAT_PORT_RESTRICTED:
 		fmt.Println("We are behind a port restricted NAT.")
-	case stun.NAT_NO_NAT:
+	case client.NAT_NO_NAT:
 		fmt.Println("We are not behind a NAT.")
-	case stun.NAT_SYMETRIC_UDP_FIREWALL:
+	case client.NAT_SYMETRIC_UDP_FIREWALL:
 		fmt.Println("We are behind a symetric UDP firewall.")
 	}
 }

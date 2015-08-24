@@ -13,13 +13,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package stun
+package client
 
 import (
 	"errors"
 	"fmt"
 	"net"
 	"time"
+
+	"github.com/zyxar/go-stun"
 )
 
 // Verbosity level for the STUN package.
@@ -51,8 +53,8 @@ func ActivateOutput(in_vebosity int, out_verbose *[]string) {
 //   + true: the client received a response.
 //   + false: the client did not receive any response
 // - The error flag.
-func SendRequest(in_connexion net.Conn, in_request Packet) (Packet, bool, error) {
-	var rcv_packet Packet
+func SendRequest(in_connexion net.Conn, in_request stun.Packet) (stun.Packet, bool, error) {
+	var rcv_packet stun.Packet
 	var request_timeout int = 100
 	var retries_count int = 0
 
@@ -112,7 +114,7 @@ func SendRequest(in_connexion net.Conn, in_request Packet) (Packet, bool, error)
 		}
 
 		// Build the packet from the list of bytes.
-		rcv_packet, err = MakePacket(b[:count])
+		rcv_packet, err = stun.MakePacket(b[:count])
 		if nil != err {
 			// The packet is not valid.
 			if verbosity > 0 {
@@ -134,4 +136,19 @@ func SendRequest(in_connexion net.Conn, in_request Packet) (Packet, bool, error)
 		addText(output, fmt.Sprintf(""))
 	}
 	return rcv_packet, false, nil
+}
+
+// This function is used to add message to a messages' spool.
+//
+// INPUT
+// - out_text: messages' spool.
+//   If this parameter is nil, then the message will be printed in through the standard output.
+//   Otherwize, the message will be appended to the spool.
+// - in_message: message to add.
+func addText(out_text *[]string, in_message string) {
+	if nil == out_text {
+		fmt.Println(in_message)
+	} else {
+		*out_text = append(*out_text, in_message)
+	}
 }

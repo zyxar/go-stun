@@ -13,11 +13,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package stun
+package client
 
 import (
 	"fmt"
 	"net"
+
+	"github.com/zyxar/go-stun"
 )
 
 var (
@@ -46,32 +48,22 @@ const (
 
 // This type contains the information returned by a request.
 // This is the return value for the following functions:
-// - ClientSendBinding
-// - ClientSendChangeRequest
+// - SendBinding
+// - SendChangeRequest
 type requestResponse struct {
-	// This flag indicates wether a response has been received or not.
-	response bool
-	// If a response has been received, then this value contains the response.
-	packet Packet
-	// The local transport address.
-	// This value should is written: "IP:Port" (IPV4) or "[IP]:Port" (IPV6).
-	transport_local string
-	// Error detected wile waiting for a response.
-	err error
+	response        bool        // indicates wether a response has been received or not.
+	packet          stun.Packet // If a response has been received, then this value contains the response.
+	transport_local string      // The local transport address, written in : "IP:Port" (IPV4) or "[IP]:Port" (IPV6)
+	err             error       // Error detected wile waiting for a response.
 }
 
 // This type represents the specific information returned by test I.
 type test1Info struct {
-	// Did the server give a "change" address?
-	changed_address_found bool
-	// The "IP family" value of the attribute "CHANGED-ADDRESS".
-	changed_address_family uint16
-	// The "IP value" of the attribute "CHANGED-ADDRESS".
-	changed_ip string
-	// The "port numner value" of the attribute "CHANGED-ADDRESS".
-	changed_port uint16
-	// This flag indicates wether the local IP address id equal to the mapped one, or not.
-	identical bool
+	changed_address_found  bool   // Did the server give a "change" address?
+	changed_address_family uint16 // The "IP family" value of the attribute "CHANGED-ADDRESS".
+	changed_ip             string // The "IP value" of the attribute "CHANGED-ADDRESS".
+	changed_port           uint16 // The "port numner value" of the attribute "CHANGED-ADDRESS".
+	identical              bool   // This flag indicates wether the local IP address id equal to the mapped one, or not.
 }
 
 // This type represents the specific information returned by test II.
@@ -84,17 +76,12 @@ type test3Info struct {
 
 // This type represents the information returned by a test.
 // This is the return value for the following functions:
-// - ClientTest1
-// - ClientTest2
-// - ClientTest3
+// - Test1
+// - Test2
+// - Test3
 type testResponse struct {
-	// The response to the request.
-	request requestResponse
-	// Specific information for a given test. Type could be:
-	// - test1Info
-	// - test2Info
-	// - test3Info
-	extra interface{}
+	request requestResponse // The response to the request.
+	extra   interface{}     // Specific information for a given test. Type could be: test1Info, test2Info, or test3Info
 }
 
 /* ------------------------------------------------------------------------------------------------ */
@@ -112,7 +99,7 @@ func (v *requestResponse) init() {
 // INPUT
 // - in_server: transport address of the server.
 //   This value should be written: "IP:Port" (IPV4) or "[IP]:Port" (IPV6).
-func ClientInit(in_server string) {
+func Init(in_server string) {
 	server_transport_address = in_server
 	client_initialized = true
 }
@@ -123,34 +110,35 @@ func ClientInit(in_server string) {
 // - in_destination_address: this string represents the transport address of the request's destination.
 //   This value should be written: "IP:Port" (IPV4) or "[IP]:Port" (IPV6).
 //   If the value of this parameter is nil, then the default server's transport address will be used.
-//   Note: The default server's transport address is the one defined through the call to the function "ClientInit()".
+//   Note: The default server's transport address is the one defined through the call to the function "Init()".
 //
 // OUTPUT
 // - The response.
 // - The error flag.
-func ClientSendBinding(in_destination_address *string) (requestResponse, error) {
-	var attribute Attribute
+func SendBinding(in_destination_address *string) (requestResponse, error) {
+	var attribute stun.Attribute
 	var err error
 	var connection net.Conn
 	var resp requestResponse
-	var packet Packet
+	var packet stun.Packet
 	var dest_address string
 
 	resp.init()
-	packet, _ = makePacket(TYPE_BINDING_REQUEST, 0, []byte{
+	packet, _ = stun.MakePacket([]byte{0x00, 0x01, // type
+		0x00, 0x00, // length
 		0x21, 0x12, 0xA4, 0x42, // cookie
 		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, // id
 	})
 
 	// Add The software attribute.
-	attribute, err = MakeSoftwareAttribute("TestClient01")
+	attribute, err = stun.MakeSoftwareAttribute("Test01")
 	if nil != err {
 		return resp, err
 	}
 	packet.AddAttribute(attribute)
 
 	// Add the fingerprint attribute.
-	attribute, err = MakeFingerprintAttribute(&packet)
+	attribute, err = stun.MakeFingerprintAttribute(&packet)
 	if nil != err {
 		return resp, err
 	}
@@ -183,35 +171,36 @@ func ClientSendBinding(in_destination_address *string) (requestResponse, error) 
 // OUTPUT
 // - The response.
 // - The error flag.
-func ClientSendChangeRequest(in_change_ip bool) (requestResponse, error) {
-	var attribute Attribute
+func SendChangeRequest(in_change_ip bool) (requestResponse, error) {
+	var attribute stun.Attribute
 	var err error
 	var connection net.Conn
 	var resp requestResponse
-	var packet Packet
+	var packet stun.Packet
 
 	resp.init()
-	packet, _ = makePacket(TYPE_BINDING_REQUEST, 0, []byte{
+	packet, _ = stun.MakePacket([]byte{0x00, 0x01, // type
+		0x00, 0x00, // length
 		0x21, 0x12, 0xA4, 0x42, // cookie
 		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, // id
 	})
 
 	// Add The software attribute
-	attribute, err = MakeSoftwareAttribute("TestClient01")
+	attribute, err = stun.MakeSoftwareAttribute("Test01")
 	if nil != err {
 		return resp, err
 	}
 	packet.AddAttribute(attribute)
 
 	// Add The software attribute
-	attribute, err = MakeChangeRequestAttribute(in_change_ip, true)
+	attribute, err = stun.MakeChangeRequestAttribute(in_change_ip, true)
 	if nil != err {
 		return resp, err
 	}
 	packet.AddAttribute(attribute)
 
 	// Add the fingerprint attribute.
-	attribute, err = MakeFingerprintAttribute(&packet)
+	attribute, err = stun.MakeFingerprintAttribute(&packet)
 	if nil != err {
 		return resp, err
 	}
@@ -241,12 +230,12 @@ func ClientSendChangeRequest(in_change_ip bool) (requestResponse, error) {
 // - in_destination_address: this string represents the transport address of the request's destination.
 //   This value should be written: "IP:Port" (IPV4) or "[IP]:Port" (IPV6).
 //   If the value of this parameter is nil, then the default server's transport address will be used.
-//   Note: The default server's transport address is the one defined through the call to the function "ClientInit()".
+//   Note: The default server's transport address is the one defined through the call to the function "Init()".
 //
 // OUTPUT
 // - The response.
 // - The error flag.
-func ClientTest1(in_destination_address *string) (testResponse, error) {
+func Test1(in_destination_address *string) (testResponse, error) {
 	var err, err_mapped error
 	var ip_mapped, ip_xored_mapped string
 	var family_mapped, family_xored_mapped, port_mapped, port_xored_mapped uint16
@@ -258,7 +247,7 @@ func ClientTest1(in_destination_address *string) (testResponse, error) {
 		addText(output, fmt.Sprintf("%s", "Test I\n"))
 	}
 
-	response.request, err = ClientSendBinding(in_destination_address)
+	response.request, err = SendBinding(in_destination_address)
 	if nil != err {
 		return response, err
 	}
@@ -295,7 +284,7 @@ func ClientTest1(in_destination_address *string) (testResponse, error) {
 		family_mapped = family_xored_mapped
 	}
 
-	ip_mapped, err = MakeTransportAddress(ip_mapped, int(port_mapped))
+	ip_mapped, err = stun.MakeTransportAddress(ip_mapped, int(port_mapped))
 	if nil != err {
 		return response, err
 	}
@@ -325,7 +314,7 @@ func ClientTest1(in_destination_address *string) (testResponse, error) {
 // OUTPUT
 // - A boolean that indicates wether the client received a response or not.
 // - The error flag.
-func CientTest2() (testResponse, error) {
+func Test2() (testResponse, error) {
 	var err error
 	var r requestResponse
 	var response testResponse
@@ -334,7 +323,7 @@ func CientTest2() (testResponse, error) {
 	if verbosity > 0 {
 		addText(output, fmt.Sprintf("%s", "Test II.\n"))
 	}
-	r, err = ClientSendChangeRequest(true)
+	r, err = SendChangeRequest(true)
 	response.request = r
 	response.extra = info
 	if nil != err {
@@ -349,7 +338,7 @@ func CientTest2() (testResponse, error) {
 // OUTPUT
 // - A boolean that indicates wether the client received a response or not.
 // - The error flag.
-func CientTest3() (testResponse, error) {
+func Test3() (testResponse, error) {
 	var err error
 	var r requestResponse
 	var response testResponse
@@ -358,7 +347,7 @@ func CientTest3() (testResponse, error) {
 	if verbosity > 0 {
 		addText(output, fmt.Sprintf("%s", "Test III.\n"))
 	}
-	r, err = ClientSendChangeRequest(false)
+	r, err = SendChangeRequest(false)
 	response.request = r
 	response.extra = info
 	if nil != err {
@@ -373,7 +362,7 @@ func CientTest3() (testResponse, error) {
 // OUTPUT
 // - The type of NAT we are behind from.
 // - The error flag.
-func ClientDiscover() (int, error) {
+func Discover() (int, error) {
 	var err error
 	var changer_transport string
 	var test1_response, test2_response, test3_response testResponse
@@ -389,7 +378,7 @@ func ClientDiscover() (int, error) {
 	/// TEST I (a)
 	/// ----------
 
-	test1_response, err = ClientTest1(nil)
+	test1_response, err = Test1(nil)
 
 	if nil != err {
 		return NAT_ERROR, err
@@ -409,7 +398,7 @@ func ClientDiscover() (int, error) {
 			addText(output, fmt.Sprintf("% -25s: %s", "Change IP", test1_response.extra.(test1Info).changed_ip))
 			addText(output, fmt.Sprintf("% -25s: %d", "Change port", int(test1_response.extra.(test1Info).changed_port)))
 		}
-		changer_transport, err = MakeTransportAddress(test1_response.extra.(test1Info).changed_ip, int(test1_response.extra.(test1Info).changed_port))
+		changer_transport, err = stun.MakeTransportAddress(test1_response.extra.(test1Info).changed_ip, int(test1_response.extra.(test1Info).changed_port))
 		if nil != err {
 			return NAT_ERROR, err
 		}
@@ -436,7 +425,7 @@ func ClientDiscover() (int, error) {
 			addText(output, fmt.Sprintf("% -25s: %s", "Conclusion", "We are behind a NAT.\n"))
 		}
 
-		test2_response, err = CientTest2()
+		test2_response, err = Test2()
 		if nil != err {
 			return NAT_ERROR, err
 		}
@@ -455,7 +444,7 @@ func ClientDiscover() (int, error) {
 			/// TEST I (b)
 			/// ----------
 
-			test1_response, err = ClientTest1(&changer_transport)
+			test1_response, err = Test1(&changer_transport)
 			if nil != err {
 				return NAT_ERROR, err
 			}
@@ -485,7 +474,7 @@ func ClientDiscover() (int, error) {
 				/// TEST III
 				/// --------
 
-				test3_response, err = CientTest3()
+				test3_response, err = Test3()
 				if nil != err {
 					return NAT_ERROR, err
 				}
@@ -536,7 +525,7 @@ func ClientDiscover() (int, error) {
 		// like a full-cone NAT, but without the translation).  If no response
 		// is received, the client knows its behind a symmetric UDP firewall.
 
-		test2_response, err = CientTest2()
+		test2_response, err = Test2()
 		if nil != err {
 			return NAT_ERROR, err
 		}
