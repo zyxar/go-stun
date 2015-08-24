@@ -98,7 +98,7 @@ func SendRequest(in_connexion net.Conn, in_request stun.Packet) (stun.Packet, bo
 					break
 				}
 				if verbosity {
-					fmt.Fprintf(os.Stderr, "\tTimeout (%04d ms) exceeded, retry...", request_timeout)
+					fmt.Fprintf(os.Stderr, "\tTimeout (%04d ms) exceeded, retry...\n", request_timeout)
 				}
 				continue
 			}

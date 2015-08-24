@@ -455,10 +455,17 @@ func (this *Packet) AddFingerprintAttribute() error {
 // OUTPUT
 // - The error flag.
 func (this *Packet) AddSoftwareAttribute(name string) error {
-	if len(name) > 763 {
+	length := len(name)
+	if length > 763 {
 		return errors.New("Software's name if too long (more than 763 bytes!)")
 	}
-	b := []byte(name)
+	var b []byte
+	if length%4 == 0 {
+		b = []byte(name)
+	} else {
+		b = make([]byte, nextBoundary(uint16(length)))
+		copy(b[:length], []byte(name))
+	}
 	if attr, err := makeAttribute(ATTRIBUTE_SOFTWARE, b); err != nil {
 		return err
 	} else {
