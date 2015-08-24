@@ -282,7 +282,7 @@ func makePacket(_type uint16, _length uint16, b []byte) (Packet, error) {
 		vtype := binary.BigEndian.Uint16(b[pos : pos+2])    // Type of the attribute.
 		length := binary.BigEndian.Uint16(b[pos+2 : pos+4]) // Length of the attribute (without the padding !!!!!!)
 		value := b[pos+4 : pos+4+length]                    // The value.
-		attribute, err := MakeAttribute(vtype, value, &pkt)
+		attribute, err := MakeAttribute(vtype, value)
 		if nil != err {
 			return pkt, err
 		}

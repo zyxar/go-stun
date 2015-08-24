@@ -143,7 +143,7 @@ func ClientSendBinding(in_destination_address *string) (requestResponse, error) 
 	})
 
 	// Add The software attribute.
-	attribute, err = MakeSoftwareAttribute(&packet, "TestClient01")
+	attribute, err = MakeSoftwareAttribute("TestClient01")
 	if nil != err {
 		return resp, err
 	}
@@ -197,14 +197,14 @@ func ClientSendChangeRequest(in_change_ip bool) (requestResponse, error) {
 	})
 
 	// Add The software attribute
-	attribute, err = MakeSoftwareAttribute(&packet, "TestClient01")
+	attribute, err = MakeSoftwareAttribute("TestClient01")
 	if nil != err {
 		return resp, err
 	}
 	packet.AddAttribute(attribute)
 
 	// Add The software attribute
-	attribute, err = MakeChangeRequestAttribute(&packet, in_change_ip, true)
+	attribute, err = MakeChangeRequestAttribute(in_change_ip, true)
 	if nil != err {
 		return resp, err
 	}

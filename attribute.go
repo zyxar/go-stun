@@ -133,10 +133,9 @@ var attribute_names = map[uint16]string{
 //
 // **BUT** RFC 5389 says that the **real** length must be a multiple of 4! (no padding)
 type Attribute struct {
-	Type   uint16  // The attribute's type (constant ATTRIBUTE_...), 16 bits
-	Length uint16  // The length of the attribute, 16 bits
-	Value  []byte  // The attribute's value.
-	Packet *Packet // the packet that contains this attribute
+	Type   uint16 // The attribute's type (constant ATTRIBUTE_...), 16 bits
+	Length uint16 // The length of the attribute, 16 bits
+	Value  []byte // The attribute's value.
 }
 
 /* ------------------------------------------------------------------------------------------------ */
@@ -150,12 +149,11 @@ type Attribute struct {
 // INPUT
 // - _type: attribute's type.
 // - value: attribute's value.
-// - packet: pointer to the packet that contains the attribute.
 //
 // OUTPUT
 // - The new attribute.
 // - The error flag.
-func MakeAttribute(_type uint16, value []byte, packet *Packet) (attr Attribute, err error) {
+func MakeAttribute(_type uint16, value []byte) (attr Attribute, err error) {
 	if (0 != len(value)%4) && (rfc == RFC3489) {
 		err = errors.New("STUN is configured to be compliant with RFC 3489! Value's length must be a multiple of 4 bytes!")
 		return
@@ -170,7 +168,6 @@ func MakeAttribute(_type uint16, value []byte, packet *Packet) (attr Attribute, 
 	attr.Value = make([]byte, leng)
 	attr.Length = uint16(len(value))
 	copy(attr.Value, b)
-	attr.Packet = packet
 	return attr, nil
 }
 
@@ -190,40 +187,38 @@ func MakeFingerprintAttribute(packet *Packet) (attr Attribute, err error) {
 	crc := crc32Checksum(packet.Bytes())
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, crc)
-	attr, err = MakeAttribute(ATTRIBUTE_FINGERPRINT, b, packet)
+	attr, err = MakeAttribute(ATTRIBUTE_FINGERPRINT, b)
 	return
 }
 
 // This function creates a "SOFTWARE" attribute.
 //
 // INPUT
-// - packet: pointer to the STUN packet.
 // - name: name of the software.
 //
 // OUTPUT
 // - The STUN's attribute.
 // - The error flag.
-func MakeSoftwareAttribute(packet *Packet, name string) (attr Attribute, err error) {
+func MakeSoftwareAttribute(name string) (attr Attribute, err error) {
 	if len(name) > 763 {
 		err = errors.New("Software's name if too long (more than 763 bytes!)")
 		return
 	}
 	b := []byte(name)
-	attr, err = MakeAttribute(ATTRIBUTE_SOFTWARE, b, packet)
+	attr, err = MakeAttribute(ATTRIBUTE_SOFTWARE, b)
 	return
 }
 
 // This function creates a "CHANGE RESQUEST" attribute.
 //
 // INPUT
-// - packet: pointer to the STUN packet.
 // - changIP: shall we change the IP address?
 // - changPort: shall we change the port number?
 //
 // OUTPUT
 // - The STUN's attribute.
 // - The error flag.
-func MakeChangeRequestAttribute(packet *Packet, changIP, changPort bool) (attr Attribute, err error) {
+func MakeChangeRequestAttribute(changIP, changPort bool) (attr Attribute, err error) {
 	var value []byte = make([]byte, 4, 4)
 
 	// RFC 3489: The CHANGE-REQUEST attribute is used by the client to request that
@@ -236,7 +231,7 @@ func MakeChangeRequestAttribute(packet *Packet, changIP, changPort bool) (attr A
 	if changPort {
 		value[3] = value[3] | 0x02
 	} // b:0010
-	attr, err = MakeAttribute(ATTRIBUTE_CHANGE_REQUEST, value, packet)
+	attr, err = MakeAttribute(ATTRIBUTE_CHANGE_REQUEST, value)
 	return
 }
 

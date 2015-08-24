@@ -82,7 +82,7 @@ func TestPacketAddAttr(t *testing.T) {
 		t.Errorf("NAttributes incorrect: %d\n", pkt.NAttributes())
 	}
 
-	attribute, err := MakeSoftwareAttribute(&pkt, "TEST ROUTINE")
+	attribute, err := MakeSoftwareAttribute("TEST ROUTINE")
 	if err != nil {
 		t.Error(err)
 	}
@@ -103,7 +103,7 @@ func TestPacketAddAttr(t *testing.T) {
 		t.Errorf("NAttributes incorrect: %d\n", pkt.NAttributes())
 	}
 
-	attribute, err = MakeChangeRequestAttribute(&pkt, true, true)
+	attribute, err = MakeChangeRequestAttribute(true, true)
 	if err != nil {
 		t.Error(err)
 	}
