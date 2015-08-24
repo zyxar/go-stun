@@ -13,19 +13,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package client
+package stun
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
-
-	"github.com/zyxar/go-stun"
+	"time"
 )
 
 var (
-	client_initialized       bool = false
-	server_transport_address string
+	verbosity       bool = false
+	noResponseError      = errors.New("no response received")
 )
 
 const (
@@ -47,17 +47,6 @@ const (
 /* Value types for the test functions.                                                              */
 /* ------------------------------------------------------------------------------------------------ */
 
-// This type contains the information returned by a request.
-// This is the return value for the following functions:
-// - SendBinding
-// - SendChangeRequest
-type requestResponse struct {
-	response        bool         // indicates wether a response has been received or not.
-	packet          *stun.Packet // If a response has been received, then this value contains the response.
-	transport_local string       // The local transport address, written in : "IP:Port" (IPV4) or "[IP]:Port" (IPV6)
-	err             error        // Error detected wile waiting for a response.
-}
-
 // This type represents the specific information returned by test I.
 type test1Info struct {
 	changed_address_found  bool   // Did the server give a "change" address?
@@ -67,143 +56,181 @@ type test1Info struct {
 	identical              bool   // This flag indicates wether the local IP address id equal to the mapped one, or not.
 }
 
-// This type represents the specific information returned by test II.
-type test2Info struct {
-}
-
-// This type represents the specific information returned by test III.
-type test3Info struct {
-}
-
 // This type represents the information returned by a test.
 // This is the return value for the following functions:
 // - Test1
 // - Test2
 // - Test3
-type testResponse struct {
-	request requestResponse // The response to the request.
-	extra   interface{}     // Specific information for a given test. Type could be: test1Info, test2Info, or test3Info
+type Response struct {
+	packet *Packet     // If a response has been received, then this value contains the response.
+	extra  interface{} // Specific information for a given test; could be: test1Info
 }
 
 /* ------------------------------------------------------------------------------------------------ */
 /* API                                                                                              */
 /* ------------------------------------------------------------------------------------------------ */
 
-// Initialize the information returned by a request.
-func (v *requestResponse) init() {
-	v.response = false
-	v.err = nil
-}
-
-// This function opens a UDP connection.
+// This function activates the output.
 //
 // INPUT
-// - in_server: transport address of the server.
-//   This value should be written: "IP:Port" (IPV4) or "[IP]:Port" (IPV6).
-func Init(in_server string) {
-	server_transport_address = in_server
-	client_initialized = true
+// - in_verbosity: verbosity level.
+// - out_verbose: pointer to a slice of strings that will be used to store the output messages.
+//   If this parameter is nil, then the message will be printed in through the standard output.
+func ActivateOutput(verbose bool) {
+	verbosity = verbose
 }
 
-// This function sends a BINDING request.
-//
-// INPUT
-// - in_destination_address: this string represents the transport address of the request's destination.
-//   This value should be written: "IP:Port" (IPV4) or "[IP]:Port" (IPV6).
-//   If the value of this parameter is nil, then the default server's transport address will be used.
-//   Note: The default server's transport address is the one defined through the call to the function "Init()".
-//
-// OUTPUT
-// - The response.
-// - The error flag.
-func SendBinding(in_destination_address *string) (requestResponse, error) {
+type Client struct {
+	addr string
+	conn net.Conn
+}
+
+func NewClient(addr string) (*Client, error) {
+	var conn net.Conn
 	var err error
-	var connection net.Conn
-	var resp requestResponse
-	var dest_address string
+	if conn, err = net.Dial("udp", addr); err != nil {
+		return nil, err
+	}
+	return &Client{addr, conn}, nil
+}
 
-	resp.init()
-	packet, _ := stun.NewPacket([]byte{0x00, 0x01, // type
+func (this *Client) Close() error {
+	return this.conn.Close()
+}
+
+func (this *Client) send(req *Packet) (resp *Packet, err error) {
+	resp, err = sendRequest(this.conn, req)
+	return
+}
+
+func (this *Client) SendBindingRequest() (resp *Packet, err error) {
+	req, _ := NewPacket([]byte{0x00, 0x01, // type
 		0x00, 0x00, // length
 		0x21, 0x12, 0xA4, 0x42, // cookie
 		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, // id
 	})
-
-	// Add The software attribute.
-	if err = packet.AddSoftwareAttribute("go-stun"); nil != err {
+	if err = req.AddSoftwareAttribute("go-stun"); nil != err {
 		return resp, err
 	}
-
-	// Add the fingerprint attribute.
-	if err = packet.AddFingerprintAttribute(); nil != err {
+	if err = req.AddFingerprintAttribute(); nil != err {
 		return resp, err
 	}
-
-	// Open a connection to the server.
-	if nil != in_destination_address {
-		dest_address = *in_destination_address
-	} else {
-		dest_address = server_transport_address
-	}
-
-	connection, err = net.Dial("udp", dest_address)
-	if err != nil {
-		return resp, err
-	}
-	resp.transport_local = connection.LocalAddr().String()
-
-	// Send the packet.
-	resp.packet, resp.response, resp.err = SendRequest(connection, packet)
-
-	return resp, connection.Close()
+	return this.send(req)
 }
 
-// This function sends a CHANGE-REQUEST request.
-//
-// INPUT
-// - in_change_ip: this flag indicates whether the "change IP flag" should be set or not.
-//
-// OUTPUT
-// - The response.
-// - The error flag.
-func SendChangeRequest(in_change_ip bool) (requestResponse, error) {
-	var err error
-	var connection net.Conn
-	var resp requestResponse
-
-	resp.init()
-	packet, _ := stun.NewPacket([]byte{0x00, 0x01, // type
+func (this *Client) SendChangeRequest(change_ip bool) (resp *Packet, err error) {
+	req, _ := NewPacket([]byte{0x00, 0x01, // type
 		0x00, 0x00, // length
 		0x21, 0x12, 0xA4, 0x42, // cookie
 		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, // id
 	})
-
-	// Add The software attribute
-	if err = packet.AddSoftwareAttribute("go-stun"); nil != err {
+	if err = req.AddSoftwareAttribute("go-stun"); nil != err {
 		return resp, err
 	}
-
-	// Add The software attribute
-	if err = packet.AddChangeRequestAttribute(in_change_ip, true); nil != err {
+	if err = req.AddChangeRequestAttribute(change_ip, true); nil != err {
 		return resp, err
 	}
-
-	// Add the fingerprint attribute.
-	if err = packet.AddFingerprintAttribute(); nil != err {
+	if err = req.AddFingerprintAttribute(); nil != err {
 		return resp, err
 	}
+	return this.send(req)
+}
 
-	// Open a connection to the server.
-	connection, err = net.Dial("udp", server_transport_address)
-	if err != nil {
-		return resp, err
+// This function sends a given request and returns the received packet.
+//
+// INPUT
+// - conn: connexion to use.
+// - req: the request to send.
+//
+// OUTPUT
+// - The receive STUN packet.
+// - A flag that indicates whether the client received a response or not.
+//   + true: the client received a response.
+//   + false: the client did not receive any response
+// - The error flag.
+func sendRequest(conn net.Conn, req *Packet) (*Packet, error) {
+	var request_timeout int = 200
+	var retries_count int = 0
+
+	sent := false
+
+	for {
+		var err error
+		var count int
+		var b []byte = make([]byte, 1000, 1000)
+
+		// Dump the packet.
+		if verbosity && !sent {
+			fmt.Fprintf(os.Stderr, "Sending REQUEST to \"%s\"\n\n%s\n", conn.RemoteAddr(), req.HexString())
+			fmt.Fprintf(os.Stderr, "%s\n", req.String())
+			sent = true
+		}
+
+		// Send the packet.
+		p := req.Bytes()
+		count, err = conn.Write(p)
+		if err != nil {
+			return nil, err
+		}
+		if len(p) != count {
+			return nil, fmt.Errorf("Partial sent")
+		}
+
+		// RFC 3489: Wait for a response.
+		// Clients SHOULD retransmit the request starting with an interval of 100ms, doubling
+		// every retransmit until the interval reaches 1.6s.  Retransmissions
+		// continue with intervals of 1.6s until a response is received, or a
+		// total of 9 requests have been sent.
+		conn.SetReadDeadline(time.Now().Add(time.Duration(request_timeout) * time.Millisecond))
+		if request_timeout < 1600 {
+			request_timeout *= 2
+		} else {
+			retries_count++
+		}
+
+		// Wait for a response.
+		count, err = conn.Read(b)
+		if err != nil {
+			if err.(net.Error).Timeout() { // See http://golang.org/src/pkg/net/timeout_test.go?h=Timeout%28%29
+				if retries_count >= 9 {
+					break
+				}
+				if verbosity {
+					fmt.Fprintf(os.Stderr, "\tTimeout (%04d ms) exceeded, retry...\n", request_timeout)
+				}
+				continue
+			}
+			return nil, err
+		}
+
+		// For nice output.
+		if verbosity && (retries_count > 0) {
+			fmt.Fprintln(os.Stderr, "\n")
+		}
+
+		// Build the packet from the list of bytes.
+		resp, err := NewPacket(b[:count])
+		if nil != err {
+			// The packet is not valid.
+			if verbosity {
+				fmt.Fprintf(os.Stderr, "\tInvalid Packet: %v. Continue.", err)
+			}
+			continue
+		}
+		if verbosity {
+			fmt.Fprintf(os.Stderr, "Received\n\n%s\n", resp.HexString())
+			fmt.Fprintf(os.Stderr, "%s\n", resp.String())
+		}
+
+		// OK, a valid response has been received.
+		return resp, nil
 	}
-	resp.transport_local = connection.LocalAddr().String()
 
-	// Send the packet.
-	resp.packet, resp.response, resp.err = SendRequest(connection, packet)
-
-	return resp, connection.Close()
+	// No valid packet has been received.
+	if verbosity {
+		fmt.Fprintln(os.Stderr)
+	}
+	return nil, nil
 }
 
 // Perform Test I.
@@ -214,7 +241,7 @@ func SendChangeRequest(in_change_ip bool) (requestResponse, error) {
 //           port that the request came from.
 //
 // INPUT
-// - in_destination_address: this string represents the transport address of the request's destination.
+// - addr: this string represents the transport address of the request's destination.
 //   This value should be written: "IP:Port" (IPV4) or "[IP]:Port" (IPV6).
 //   If the value of this parameter is nil, then the default server's transport address will be used.
 //   Note: The default server's transport address is the one defined through the call to the function "Init()".
@@ -222,11 +249,11 @@ func SendChangeRequest(in_change_ip bool) (requestResponse, error) {
 // OUTPUT
 // - The response.
 // - The error flag.
-func Test1(in_destination_address *string) (testResponse, error) {
+func Test1(client *Client) (Response, error) {
 	var err, err_mapped error
 	var ip_mapped, ip_xored_mapped string
 	var family_mapped, family_xored_mapped, port_mapped, port_xored_mapped uint16
-	var response testResponse
+	var response Response
 	var info test1Info
 	var found bool
 
@@ -234,23 +261,23 @@ func Test1(in_destination_address *string) (testResponse, error) {
 		fmt.Fprintf(os.Stderr, "%s", "Test I\n")
 	}
 
-	response.request, err = SendBinding(in_destination_address)
+	response.packet, err = client.SendBindingRequest()
 	if nil != err {
 		return response, err
 	}
-	if !response.request.response {
-		return response, nil
+	if response.packet == nil {
+		return response, noResponseError
 	}
 
 	// Extracts the mapped address and the XORED mapped address.
 	// Note: Some STUN servers don't set the XORED mapped address (RFC 3489 does not define XORED mapped IP address).
 	//       Therefore, we consider that no XORED mapped address is not an error.
 	_ = family_mapped // Really not used
-	found, family_mapped, ip_mapped, port_mapped, err = response.request.packet.MappedAddress()
+	found, family_mapped, ip_mapped, port_mapped, err = response.packet.MappedAddress()
 	if (nil != err) || (!found) {
 		return response, err
 	}
-	found, family_xored_mapped, ip_xored_mapped, port_xored_mapped, err = response.request.packet.XorMappedAddress()
+	found, family_xored_mapped, ip_xored_mapped, port_xored_mapped, err = response.packet.XorMappedAddress()
 
 	if verbosity {
 		fmt.Fprintf(os.Stderr, "% -25s: %s:%d\n", "Mapped address", ip_mapped, port_mapped)
@@ -271,7 +298,7 @@ func Test1(in_destination_address *string) (testResponse, error) {
 		family_mapped = family_xored_mapped
 	}
 
-	ip_mapped, err = stun.MakeTransportAddress(ip_mapped, int(port_mapped))
+	ip_mapped, err = MakeTransportAddress(ip_mapped, int(port_mapped))
 	if nil != err {
 		return response, err
 	}
@@ -279,16 +306,16 @@ func Test1(in_destination_address *string) (testResponse, error) {
 	// Extracts the transport address "CHANGED-ADDRESS".
 	// Some servers don't set the attribute "CHANGED-ADDRESS".
 	// So we consider that the lake of this attribute is not an error.
-	info.changed_address_found, info.changed_address_family, info.changed_ip, info.changed_port, err = response.request.packet.ChangedAddress()
+	info.changed_address_found, info.changed_address_family, info.changed_ip, info.changed_port, err = response.packet.ChangedAddress()
 	if nil != err {
 		return response, err
 	}
 
 	// Compare local IP with mapped IP.
 	if verbosity {
-		fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Local address", response.request.transport_local)
+		fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Local address", client.conn.LocalAddr().String())
 	}
-	info.identical = response.request.transport_local == ip_mapped
+	info.identical = client.conn.LocalAddr().String() == ip_mapped
 	response.extra = info
 
 	return response, nil
@@ -301,22 +328,15 @@ func Test1(in_destination_address *string) (testResponse, error) {
 // OUTPUT
 // - A boolean that indicates wether the client received a response or not.
 // - The error flag.
-func Test2() (testResponse, error) {
+func Test2(client *Client) (Response, error) {
 	var err error
-	var r requestResponse
-	var response testResponse
-	var info test2Info
+	var response Response
 
 	if verbosity {
 		fmt.Fprintf(os.Stderr, "%s", "Test II.\n")
 	}
-	r, err = SendChangeRequest(true)
-	response.request = r
-	response.extra = info
-	if nil != err {
-		return response, err
-	}
-	return response, nil
+	response.packet, err = client.SendChangeRequest(true)
+	return response, err
 }
 
 // Perform Test III.
@@ -325,22 +345,15 @@ func Test2() (testResponse, error) {
 // OUTPUT
 // - A boolean that indicates wether the client received a response or not.
 // - The error flag.
-func Test3() (testResponse, error) {
+func Test3(client *Client) (Response, error) {
 	var err error
-	var r requestResponse
-	var response testResponse
-	var info test2Info
+	var response Response
 
 	if verbosity {
 		fmt.Fprintf(os.Stderr, "%s", "Test III.\n")
 	}
-	r, err = SendChangeRequest(false)
-	response.request = r
-	response.extra = info
-	if nil != err {
-		return response, err
-	}
-	return response, nil
+	response.packet, err = client.SendChangeRequest(false)
+	return response, err
 }
 
 // Perform the discovery process.
@@ -349,10 +362,10 @@ func Test3() (testResponse, error) {
 // OUTPUT
 // - The type of NAT we are behind from.
 // - The error flag.
-func Discover() (int, error) {
+func Discover(addr string) (int, error) {
 	var err error
 	var changer_transport string
-	var test1_response, test2_response, test3_response testResponse
+	var test1_response Response
 
 	// RFC 3489: The client begins by initiating test I.  If this test yields no
 	// response, the client knows right away that it is not capable of UDP
@@ -364,18 +377,20 @@ func Discover() (int, error) {
 	/// ----------
 	/// TEST I (a)
 	/// ----------
-
-	test1_response, err = Test1(nil)
-
-	if nil != err {
+	client, err := NewClient(addr)
+	if err != nil {
 		return NAT_ERROR, err
 	}
-	if !test1_response.request.response {
-		if verbosity {
-			fmt.Fprintf(os.Stderr, "% -25s%s\n", "Result:", "Got no response for test I.")
-			fmt.Fprintf(os.Stderr, "% -25s%s\n", "Conclusion:", "UDP is blocked.")
+	defer client.Close()
+	if test1_response, err = Test1(client); nil != err {
+		if err == noResponseError {
+			if verbosity {
+				fmt.Fprintf(os.Stderr, "% -25s%s\n", "Result:", "Got no response for test I.")
+				fmt.Fprintf(os.Stderr, "% -25s%s\n", "Conclusion:", "UDP is blocked.")
+			}
+			return NAT_BLOCKED, err
 		}
-		return NAT_BLOCKED, err
+		return NAT_ERROR, err
 	}
 
 	// Save "changed transport address" for later test.
@@ -385,7 +400,7 @@ func Discover() (int, error) {
 			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Change IP", test1_response.extra.(test1Info).changed_ip)
 			fmt.Fprintf(os.Stderr, "% -25s: %d\n", "Change port", int(test1_response.extra.(test1Info).changed_port))
 		}
-		changer_transport, err = stun.MakeTransportAddress(test1_response.extra.(test1Info).changed_ip, int(test1_response.extra.(test1Info).changed_port))
+		changer_transport, err = MakeTransportAddress(test1_response.extra.(test1Info).changed_ip, int(test1_response.extra.(test1Info).changed_port))
 		if nil != err {
 			return NAT_ERROR, err
 		}
@@ -412,11 +427,11 @@ func Discover() (int, error) {
 			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are behind a NAT.\n")
 		}
 
-		test2_response, err = Test2()
-		if nil != err {
+		_, err = Test2(client)
+		if nil != err && err != noResponseError {
 			return NAT_ERROR, err
 		}
-		if !test2_response.request.response { // Test II (a): We did not receive any valid response from the server.
+		if err == noResponseError { // Test II (a): We did not receive any valid response from the server.
 
 			// RFC 3489:  If no response is received, it performs test I again, but this time,
 			// does so to the address and port from the CHANGED-ADDRESS attribute
@@ -430,18 +445,21 @@ func Discover() (int, error) {
 			/// ----------
 			/// TEST I (b)
 			/// ----------
-
-			test1_response, err = Test1(&changer_transport)
-			if nil != err {
+			nc, err := NewClient(changer_transport)
+			if err != nil {
 				return NAT_ERROR, err
 			}
-			if !test1_response.request.response {
-				// No response from the server. This should not happend.
-				if verbosity {
-					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got no response for test I. This is unexpected!")
-					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "The only thing we can say is that we are behind a NAT.\n")
+			defer nc.Close()
+			test1_response, err = Test1(nc)
+			if nil != err {
+				if err == noResponseError { // No response from the server. This should not happend.
+					if verbosity {
+						fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got no response for test I. This is unexpected!")
+						fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "The only thing we can say is that we are behind a NAT.\n")
+					}
+					return NAT_UNKNOWN, nil
 				}
-				return NAT_UNKNOWN, nil
+				return NAT_ERROR, err
 			}
 
 			if !test1_response.extra.(test1Info).identical { // Test I (b)
@@ -461,11 +479,11 @@ func Discover() (int, error) {
 				/// TEST III
 				/// --------
 
-				test3_response, err = Test3()
-				if nil != err {
+				_, err = Test3(client)
+				if nil != err && err != noResponseError {
 					return NAT_ERROR, err
 				}
-				if !test3_response.request.response {
+				if err == noResponseError {
 					if verbosity {
 						fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got no response for test III.")
 						fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are behind a \"port sestricted\" NAT.\n")
@@ -478,13 +496,9 @@ func Discover() (int, error) {
 					}
 					return NAT_RESTRICTED, nil
 				}
-
-				// End of branch.
 			}
 		} else { // TEST II (a) : We received a valid response from the server.
-
 			// RFC 3489: If a response is received, the client knows that it is behind a \"full-cone\" NAT.
-
 			if verbosity {
 				fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Test II is OK.")
 				fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are behind a \"full cone\" NAT.\n")
@@ -512,22 +526,22 @@ func Discover() (int, error) {
 		// like a full-cone NAT, but without the translation).  If no response
 		// is received, the client knows its behind a symmetric UDP firewall.
 
-		test2_response, err = Test2()
+		_, err = Test2(client)
 		if nil != err {
-			return NAT_ERROR, err
-		}
-		if test2_response.request.response { //
-			if verbosity {
-				fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test II.\n")
-				fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are *not* behind a NAT.")
+			if err == noResponseError {
+				if verbosity {
+					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got no response for test II.\n")
+					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are behind a symmetric UDP firewall.")
+				}
+				return NAT_SYMETRIC_UDP_FIREWALL, nil
 			}
-			return NAT_NO_NAT, nil
+			return NAT_ERROR, err
 		}
 
 		if verbosity {
-			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got no response for test II.\n")
-			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are behind a symmetric UDP firewall.")
+			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test II.\n")
+			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are *not* behind a NAT.")
 		}
-		return NAT_SYMETRIC_UDP_FIREWALL, nil
+		return NAT_NO_NAT, nil
 	}
 }
