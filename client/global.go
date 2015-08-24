@@ -19,16 +19,14 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/zyxar/go-stun"
 )
 
 // Verbosity level for the STUN package.
-var verbosity int = 0
-
-// Buffer used to store the package's output, if buffering is required.
-var output *[]string = nil
+var verbosity bool = false
 
 // This function activates the output.
 //
@@ -36,9 +34,8 @@ var output *[]string = nil
 // - in_verbosity: verbosity level.
 // - out_verbose: pointer to a slice of strings that will be used to store the output messages.
 //   If this parameter is nil, then the message will be printed in through the standard output.
-func ActivateOutput(in_vebosity int, out_verbose *[]string) {
-	verbosity = in_vebosity
-	output = out_verbose
+func ActivateOutput(verbose bool) {
+	verbosity = verbose
 }
 
 // This function sends a given request and returns the received packet.
@@ -66,9 +63,9 @@ func SendRequest(in_connexion net.Conn, in_request stun.Packet) (stun.Packet, bo
 		var b []byte = make([]byte, 1000, 1000)
 
 		// Dump the packet.
-		if (verbosity > 0) && !sent {
-			addText(output, fmt.Sprintf("Sending REQUEST to \"%s\"\n\n%s\n", in_connexion.RemoteAddr(), in_request.HexString()))
-			addText(output, fmt.Sprintf("%s\n", in_request.String()))
+		if verbosity && !sent {
+			fmt.Fprintf(os.Stderr, "Sending REQUEST to \"%s\"\n\n%s\n", in_connexion.RemoteAddr(), in_request.HexString())
+			fmt.Fprintf(os.Stderr, "%s\n", in_request.String())
 			sent = true
 		}
 
@@ -100,8 +97,8 @@ func SendRequest(in_connexion net.Conn, in_request stun.Packet) (stun.Packet, bo
 				if retries_count >= 9 {
 					break
 				}
-				if verbosity > 0 {
-					addText(output, fmt.Sprintf("\tTimeout (%04d ms) exceeded, retry...", request_timeout))
+				if verbosity {
+					fmt.Fprintf(os.Stderr, "\tTimeout (%04d ms) exceeded, retry...", request_timeout)
 				}
 				continue
 			}
@@ -109,22 +106,22 @@ func SendRequest(in_connexion net.Conn, in_request stun.Packet) (stun.Packet, bo
 		}
 
 		// For nice output.
-		if (verbosity > 0) && (retries_count > 0) {
-			addText(output, "\n")
+		if verbosity && (retries_count > 0) {
+			fmt.Fprintln(os.Stderr, "\n")
 		}
 
 		// Build the packet from the list of bytes.
 		rcv_packet, err = stun.MakePacket(b[:count])
 		if nil != err {
 			// The packet is not valid.
-			if verbosity > 0 {
-				addText(output, fmt.Sprintf("\tInvalid Packet: %v. Continue.", err))
+			if verbosity {
+				fmt.Fprintf(os.Stderr, "\tInvalid Packet: %v. Continue.", err)
 			}
 			continue
 		}
-		if verbosity > 0 {
-			addText(output, fmt.Sprintf("Received\n\n%s\n", rcv_packet.HexString()))
-			addText(output, fmt.Sprintf("%s\n", rcv_packet.String()))
+		if verbosity {
+			fmt.Fprintf(os.Stderr, "Received\n\n%s\n", rcv_packet.HexString())
+			fmt.Fprintf(os.Stderr, "%s\n", rcv_packet.String())
 		}
 
 		// OK, a valid response has been received.
@@ -132,23 +129,8 @@ func SendRequest(in_connexion net.Conn, in_request stun.Packet) (stun.Packet, bo
 	}
 
 	// No valid packet has been received.
-	if verbosity > 0 {
-		addText(output, fmt.Sprintf(""))
+	if verbosity {
+		fmt.Fprintf(os.Stderr, "")
 	}
 	return rcv_packet, false, nil
-}
-
-// This function is used to add message to a messages' spool.
-//
-// INPUT
-// - out_text: messages' spool.
-//   If this parameter is nil, then the message will be printed in through the standard output.
-//   Otherwize, the message will be appended to the spool.
-// - in_message: message to add.
-func addText(out_text *[]string, in_message string) {
-	if nil == out_text {
-		fmt.Println(in_message)
-	} else {
-		*out_text = append(*out_text, in_message)
-	}
 }

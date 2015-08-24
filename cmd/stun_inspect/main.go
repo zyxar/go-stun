@@ -28,13 +28,13 @@ import (
 
 func main() {
 	var (
-		err            error
-		serverHost     *string = flag.String("host", "", "host name for the STUN server.")
-		serverPort     *int    = flag.Int("port", 3478, "port number for the host server.")
-		verbosityLevel *int    = flag.Int("verbose", 0, "verbosity level.")
-		ips            []string
-		ip             string
-		nat            int
+		err        error
+		serverHost *string = flag.String("host", "", "host name for the STUN server.")
+		serverPort *int    = flag.Int("port", 3478, "port number for the host server.")
+		verbose    *bool   = flag.Bool("verbose", false, "verbose.")
+		ips        []string
+		ip         string
+		nat        int
 	)
 
 	// Parse the command line.
@@ -93,7 +93,7 @@ func main() {
 
 	// Perform discovery.
 	client.Init(ip)
-	client.ActivateOutput(*verbosityLevel, nil)
+	client.ActivateOutput(*verbose)
 
 	if nat, err = client.Discover(); nil != err {
 		fmt.Printf("An error occured: %s\n", err)

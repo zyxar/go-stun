@@ -18,6 +18,7 @@ package client
 import (
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/zyxar/go-stun"
 )
@@ -231,8 +232,8 @@ func Test1(in_destination_address *string) (testResponse, error) {
 	var info test1Info
 	var found bool
 
-	if verbosity > 0 {
-		addText(output, fmt.Sprintf("%s", "Test I\n"))
+	if verbosity {
+		fmt.Fprintf(os.Stderr, "%s", "Test I\n")
 	}
 
 	response.request, err = SendBinding(in_destination_address)
@@ -253,15 +254,15 @@ func Test1(in_destination_address *string) (testResponse, error) {
 	}
 	found, family_xored_mapped, ip_xored_mapped, port_xored_mapped, err = response.request.packet.XorMappedAddress()
 
-	if verbosity > 0 {
-		addText(output, fmt.Sprintf("% -25s: %s:%d", "Mapped address", ip_mapped, port_mapped))
+	if verbosity {
+		fmt.Fprintf(os.Stderr, "% -25s: %s:%d", "Mapped address", ip_mapped, port_mapped)
 		if nil == err_mapped && found {
-			if verbosity > 0 {
-				addText(output, fmt.Sprintf("% -25s: %s:%d", "Xored mapped address", ip_xored_mapped, port_xored_mapped))
+			if verbosity {
+				fmt.Fprintf(os.Stderr, "% -25s: %s:%d", "Xored mapped address", ip_xored_mapped, port_xored_mapped)
 			}
 		} else {
-			if verbosity > 0 {
-				addText(output, fmt.Sprintf("% -25s: %s", "Xored mapped address", "No xored mapped address given"))
+			if verbosity {
+				fmt.Fprintf(os.Stderr, "% -25s: %s", "Xored mapped address", "No xored mapped address given")
 			}
 		}
 	}
@@ -286,8 +287,8 @@ func Test1(in_destination_address *string) (testResponse, error) {
 	}
 
 	// Compare local IP with mapped IP.
-	if verbosity > 0 {
-		addText(output, fmt.Sprintf("% -25s: %s", "Local address", response.request.transport_local))
+	if verbosity {
+		fmt.Fprintf(os.Stderr, "% -25s: %s", "Local address", response.request.transport_local)
 	}
 	info.identical = response.request.transport_local == ip_mapped
 	response.extra = info
@@ -308,8 +309,8 @@ func Test2() (testResponse, error) {
 	var response testResponse
 	var info test2Info
 
-	if verbosity > 0 {
-		addText(output, fmt.Sprintf("%s", "Test II.\n"))
+	if verbosity {
+		fmt.Fprintf(os.Stderr, "%s", "Test II.\n")
 	}
 	r, err = SendChangeRequest(true)
 	response.request = r
@@ -332,8 +333,8 @@ func Test3() (testResponse, error) {
 	var response testResponse
 	var info test2Info
 
-	if verbosity > 0 {
-		addText(output, fmt.Sprintf("%s", "Test III.\n"))
+	if verbosity {
+		fmt.Fprintf(os.Stderr, "%s", "Test III.\n")
 	}
 	r, err = SendChangeRequest(false)
 	response.request = r
@@ -372,9 +373,9 @@ func Discover() (int, error) {
 		return NAT_ERROR, err
 	}
 	if !test1_response.request.response {
-		if verbosity > 0 {
-			addText(output, fmt.Sprintf("% -25s%s", "Result:", "Got no response for test I."))
-			addText(output, fmt.Sprintf("% -25s%s", "Conclusion:", "UDP is blocked."))
+		if verbosity {
+			fmt.Fprintf(os.Stderr, "% -25s%s", "Result:", "Got no response for test I.")
+			fmt.Fprintf(os.Stderr, "% -25s%s", "Conclusion:", "UDP is blocked.")
 		}
 		return NAT_BLOCKED, err
 	}
@@ -382,18 +383,18 @@ func Discover() (int, error) {
 	// Save "changed transport address" for later test.
 	// Please note that some servers don't set this attribute.
 	if test1_response.extra.(test1Info).changed_address_found {
-		if verbosity > 0 {
-			addText(output, fmt.Sprintf("% -25s: %s", "Change IP", test1_response.extra.(test1Info).changed_ip))
-			addText(output, fmt.Sprintf("% -25s: %d", "Change port", int(test1_response.extra.(test1Info).changed_port)))
+		if verbosity {
+			fmt.Fprintf(os.Stderr, "% -25s: %s", "Change IP", test1_response.extra.(test1Info).changed_ip)
+			fmt.Fprintf(os.Stderr, "% -25s: %d", "Change port", int(test1_response.extra.(test1Info).changed_port))
 		}
 		changer_transport, err = stun.MakeTransportAddress(test1_response.extra.(test1Info).changed_ip, int(test1_response.extra.(test1Info).changed_port))
 		if nil != err {
 			return NAT_ERROR, err
 		}
 	} else {
-		if verbosity > 0 {
-			addText(output, fmt.Sprintf("% -25s: %s", "Result", "The response does not contain any \"changed\" address."))
-			addText(output, fmt.Sprintf("% -25s: %s", "Conclusion", "The only thing we can say is that we are behind a NAT.\n"))
+		if verbosity {
+			fmt.Fprintf(os.Stderr, "% -25s: %s", "Result", "The response does not contain any \"changed\" address.")
+			fmt.Fprintf(os.Stderr, "% -25s: %s", "Conclusion", "The only thing we can say is that we are behind a NAT.\n")
 		}
 		return NAT_UNKNOWN, nil
 	}
@@ -408,9 +409,9 @@ func Discover() (int, error) {
 		/// TEST II (a)
 		/// -----------
 
-		if verbosity > 0 {
-			addText(output, fmt.Sprintf("% -25s: %s", "Result", "Got a response for test I. Test I is not OK."))
-			addText(output, fmt.Sprintf("% -25s: %s", "Conclusion", "We are behind a NAT.\n"))
+		if verbosity {
+			fmt.Fprintf(os.Stderr, "% -25s: %s", "Result", "Got a response for test I. Test I is not OK.")
+			fmt.Fprintf(os.Stderr, "% -25s: %s", "Conclusion", "We are behind a NAT.\n")
 		}
 
 		test2_response, err = Test2()
@@ -423,9 +424,9 @@ func Discover() (int, error) {
 			// does so to the address and port from the CHANGED-ADDRESS attribute
 			// from the response to test I.
 
-			if verbosity > 0 {
-				addText(output, fmt.Sprintf("% -25s: %s", "Result", "Got no response for test II. Test II is not OK."))
-				addText(output, fmt.Sprintf("% -25s: %s \"%s\"\n", "Conclusion", "Perform Test I again. This time, server's transport address is", changer_transport))
+			if verbosity {
+				fmt.Fprintf(os.Stderr, "% -25s: %s", "Result", "Got no response for test II. Test II is not OK.")
+				fmt.Fprintf(os.Stderr, "% -25s: %s \"%s\"\n", "Conclusion", "Perform Test I again. This time, server's transport address is", changer_transport)
 			}
 
 			/// ----------
@@ -438,24 +439,24 @@ func Discover() (int, error) {
 			}
 			if !test1_response.request.response {
 				// No response from the server. This should not happend.
-				if verbosity > 0 {
-					addText(output, fmt.Sprintf("% -25s: %s", "Result", "Got no response for test I. This is unexpected!"))
-					addText(output, fmt.Sprintf("% -25s: %s", "Conclusion", "The only thing we can say is that we are behind a NAT.\n"))
+				if verbosity {
+					fmt.Fprintf(os.Stderr, "% -25s: %s", "Result", "Got no response for test I. This is unexpected!")
+					fmt.Fprintf(os.Stderr, "% -25s: %s", "Conclusion", "The only thing we can say is that we are behind a NAT.\n")
 				}
 				return NAT_UNKNOWN, nil
 			}
 
 			if !test1_response.extra.(test1Info).identical { // Test I (b)
-				if verbosity > 0 {
-					addText(output, fmt.Sprintf("% -25s: %s", "Result", "Got a response for test I. Test I is not OK."))
-					addText(output, fmt.Sprintf("% -25s: %s", "Conclusion", "We are behind a symetric NAT.\n"))
+				if verbosity {
+					fmt.Fprintf(os.Stderr, "% -25s: %s", "Result", "Got a response for test I. Test I is not OK.")
+					fmt.Fprintf(os.Stderr, "% -25s: %s", "Conclusion", "We are behind a symetric NAT.\n")
 				}
 				return NAT_SYMETRIC, nil
 			} else { // Test I (b)
 
-				if verbosity > 0 {
-					addText(output, fmt.Sprintf("% -25s: %s", "Result", "Got a response for test I. Test I is OK.\n"))
-					addText(output, fmt.Sprintf("% -25s: %s", "Conclusion", "Perform Test III.\n"))
+				if verbosity {
+					fmt.Fprintf(os.Stderr, "% -25s: %s", "Result", "Got a response for test I. Test I is OK.\n")
+					fmt.Fprintf(os.Stderr, "% -25s: %s", "Conclusion", "Perform Test III.\n")
 				}
 
 				/// --------
@@ -467,15 +468,15 @@ func Discover() (int, error) {
 					return NAT_ERROR, err
 				}
 				if !test3_response.request.response {
-					if verbosity > 0 {
-						addText(output, fmt.Sprintf("% -25s: %s", "Result", "Got no response for test III."))
-						addText(output, fmt.Sprintf("% -25s: %s", "Conclusion", "We are behind a \"port sestricted\" NAT.\n"))
+					if verbosity {
+						fmt.Fprintf(os.Stderr, "% -25s: %s", "Result", "Got no response for test III.")
+						fmt.Fprintf(os.Stderr, "% -25s: %s", "Conclusion", "We are behind a \"port sestricted\" NAT.\n")
 					}
 					return NAT_PORT_RESTRICTED, nil
 				} else {
-					if verbosity > 0 {
-						addText(output, fmt.Sprintf("% -25s: %s", "Result", "Got a response for test III."))
-						addText(output, fmt.Sprintf("% -25s: %s", "Conclusion", "We are behind a \"restricted\" NAT.\n"))
+					if verbosity {
+						fmt.Fprintf(os.Stderr, "% -25s: %s", "Result", "Got a response for test III.")
+						fmt.Fprintf(os.Stderr, "% -25s: %s", "Conclusion", "We are behind a \"restricted\" NAT.\n")
 					}
 					return NAT_RESTRICTED, nil
 				}
@@ -486,9 +487,9 @@ func Discover() (int, error) {
 
 			// RFC 3489: If a response is received, the client knows that it is behind a \"full-cone\" NAT.
 
-			if verbosity > 0 {
-				addText(output, fmt.Sprintf("% -25s: %s", "Result", "Test II is OK."))
-				addText(output, fmt.Sprintf("% -25s: %s", "Conclusion", "We are behind a \"full cone\" NAT.\n"))
+			if verbosity {
+				fmt.Fprintf(os.Stderr, "% -25s: %s", "Result", "Test II is OK.")
+				fmt.Fprintf(os.Stderr, "% -25s: %s", "Conclusion", "We are behind a \"full cone\" NAT.\n")
 			}
 			return NAT_FULL_CONE, nil
 		}
@@ -499,9 +500,9 @@ func Discover() (int, error) {
 		// as the local IP address and port of the socket used to send the
 		// request, the client knows that it is not natted. It executes test II.
 
-		if verbosity > 0 {
-			addText(output, fmt.Sprintf("% -25s: %s", "Result", "Got a response for test 1. Test I is OK. Addresses are the same.\n"))
-			addText(output, fmt.Sprintf("% -25s: %s", "Conclusion", "We are *not* behind a NAT."))
+		if verbosity {
+			fmt.Fprintf(os.Stderr, "% -25s: %s", "Result", "Got a response for test 1. Test I is OK. Addresses are the same.\n")
+			fmt.Fprintf(os.Stderr, "% -25s: %s", "Conclusion", "We are *not* behind a NAT.")
 		}
 
 		/// -----------
@@ -518,16 +519,16 @@ func Discover() (int, error) {
 			return NAT_ERROR, err
 		}
 		if test2_response.request.response { //
-			if verbosity > 0 {
-				addText(output, fmt.Sprintf("% -25s: %s", "Result", "Got a response for test II.\n"))
-				addText(output, fmt.Sprintf("% -25s: %s", "Conclusion", "We are *not* behind a NAT."))
+			if verbosity {
+				fmt.Fprintf(os.Stderr, "% -25s: %s", "Result", "Got a response for test II.\n")
+				fmt.Fprintf(os.Stderr, "% -25s: %s", "Conclusion", "We are *not* behind a NAT.")
 			}
 			return NAT_NO_NAT, nil
 		}
 
-		if verbosity > 0 {
-			addText(output, fmt.Sprintf("% -25s: %s", "Result", "Got no response for test II.\n"))
-			addText(output, fmt.Sprintf("% -25s: %s", "Conclusion", "We are behind a symmetric UDP firewall."))
+		if verbosity {
+			fmt.Fprintf(os.Stderr, "% -25s: %s", "Result", "Got no response for test II.\n")
+			fmt.Fprintf(os.Stderr, "% -25s: %s", "Conclusion", "We are behind a symmetric UDP firewall.")
 		}
 		return NAT_SYMETRIC_UDP_FIREWALL, nil
 	}
