@@ -52,10 +52,10 @@ const (
 // - SendBinding
 // - SendChangeRequest
 type requestResponse struct {
-	response        bool        // indicates wether a response has been received or not.
-	packet          stun.Packet // If a response has been received, then this value contains the response.
-	transport_local string      // The local transport address, written in : "IP:Port" (IPV4) or "[IP]:Port" (IPV6)
-	err             error       // Error detected wile waiting for a response.
+	response        bool         // indicates wether a response has been received or not.
+	packet          *stun.Packet // If a response has been received, then this value contains the response.
+	transport_local string       // The local transport address, written in : "IP:Port" (IPV4) or "[IP]:Port" (IPV6)
+	err             error        // Error detected wile waiting for a response.
 }
 
 // This type represents the specific information returned by test I.
@@ -120,11 +120,10 @@ func SendBinding(in_destination_address *string) (requestResponse, error) {
 	var err error
 	var connection net.Conn
 	var resp requestResponse
-	var packet stun.Packet
 	var dest_address string
 
 	resp.init()
-	packet, _ = stun.MakePacket([]byte{0x00, 0x01, // type
+	packet, _ := stun.NewPacket([]byte{0x00, 0x01, // type
 		0x00, 0x00, // length
 		0x21, 0x12, 0xA4, 0x42, // cookie
 		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, // id
@@ -171,10 +170,9 @@ func SendChangeRequest(in_change_ip bool) (requestResponse, error) {
 	var err error
 	var connection net.Conn
 	var resp requestResponse
-	var packet stun.Packet
 
 	resp.init()
-	packet, _ = stun.MakePacket([]byte{0x00, 0x01, // type
+	packet, _ := stun.NewPacket([]byte{0x00, 0x01, // type
 		0x00, 0x00, // length
 		0x21, 0x12, 0xA4, 0x42, // cookie
 		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, // id

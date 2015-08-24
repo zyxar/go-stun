@@ -50,8 +50,8 @@ func ActivateOutput(verbose bool) {
 //   + true: the client received a response.
 //   + false: the client did not receive any response
 // - The error flag.
-func SendRequest(in_connexion net.Conn, in_request stun.Packet) (stun.Packet, bool, error) {
-	var rcv_packet stun.Packet
+func SendRequest(in_connexion net.Conn, in_request *stun.Packet) (*stun.Packet, bool, error) {
+	var rcv_packet *stun.Packet
 	var request_timeout int = 100
 	var retries_count int = 0
 
@@ -111,7 +111,7 @@ func SendRequest(in_connexion net.Conn, in_request stun.Packet) (stun.Packet, bo
 		}
 
 		// Build the packet from the list of bytes.
-		rcv_packet, err = stun.MakePacket(b[:count])
+		rcv_packet, err = stun.NewPacket(b[:count])
 		if nil != err {
 			// The packet is not valid.
 			if verbosity {

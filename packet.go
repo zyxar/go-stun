@@ -177,18 +177,18 @@ type Packet struct {
 //
 // INPUT
 // - attr: the attribute to add
-func (packet *Packet) AddAttribute(attr Attribute) {
-	packet.attributes = append(packet.attributes, attr)
+func (this *Packet) AddAttribute(attr Attribute) {
+	this.attributes = append(this.attributes, attr)
 	// Add the *TOTAL* length of the added attribute.
 	// (Padded) value + header
 
 	if RFC3489 == rfc {
-		packet.length += attr.Length + 4
-		if 0 != packet.length%4 {
+		this.length += attr.Length + 4
+		if 0 != this.length%4 {
 			panic("STUN is configured to be compliant with RFC 3489. All attributes' lengths must be multiples of 4.")
 		}
 	} else {
-		packet.length += nextBoundary(attr.Length) + 4
+		this.length += nextBoundary(attr.Length) + 4
 	}
 }
 
@@ -196,8 +196,8 @@ func (packet *Packet) AddAttribute(attr Attribute) {
 //
 // OUTPUT
 // - The number of attributes in the packet.
-func (packet *Packet) NAttributes() int {
-	return len(packet.attributes)
+func (this *Packet) NAttributes() int {
+	return len(this.attributes)
 }
 
 // Get a an attribute from the packet.
@@ -207,37 +207,37 @@ func (packet *Packet) NAttributes() int {
 //
 // OUTPUT
 // - The attribute.
-func (packet *Packet) Attribute(i int) Attribute {
-	return packet.attributes[i]
+func (this *Packet) Attribute(i int) Attribute {
+	return this.attributes[i]
 }
 
 // This function creates a sequence of bytes from a STUN packet, that can be sent to the network.
 //
 // OUTPUT
 // - The sequence of bytes.
-func (packet Packet) Bytes() []byte {
+func (this Packet) Bytes() []byte {
 	length := 20
-	for i := 0; i < len(packet.attributes); i++ {
-		length += 4 + len(packet.attributes[i].Value)
+	for i := 0; i < len(this.attributes); i++ {
+		length += 4 + len(this.attributes[i].Value)
 	}
 	if length > 65535 {
 		return nil
 	}
 	p := make([]byte, length)
-	binary.BigEndian.PutUint16(p[0:2], packet._type)  // Add the message's type.
-	binary.BigEndian.PutUint16(p[2:4], packet.length) // Add the packet's length. // Note: at this point, set the length to 0.
-	binary.BigEndian.PutUint32(p[4:8], packet.cookie) // Add the magic cookie.
-	copy(p[8:], packet.id[:])                         // Add the transaction ID.
+	binary.BigEndian.PutUint16(p[0:2], this._type)  // Add the message's type.
+	binary.BigEndian.PutUint16(p[2:4], this.length) // Add the packet's length. // Note: at this point, set the length to 0.
+	binary.BigEndian.PutUint32(p[4:8], this.cookie) // Add the magic cookie.
+	copy(p[8:], this.id[:])                         // Add the transaction ID.
 	pos := 20
-	for i := 0; i < len(packet.attributes); i++ { // Add attributes.
-		binary.BigEndian.PutUint16(p[pos:pos+2], packet.attributes[i].Type)
+	for i := 0; i < len(this.attributes); i++ { // Add attributes.
+		binary.BigEndian.PutUint16(p[pos:pos+2], this.attributes[i].Type)
 		pos += 2
-		binary.BigEndian.PutUint16(p[pos:pos+2], packet.attributes[i].Length) // We set the *real* length, not the padded one.
+		binary.BigEndian.PutUint16(p[pos:pos+2], this.attributes[i].Length) // We set the *real* length, not the padded one.
 		pos += 2
-		copy(p[pos:], packet.attributes[i].Value) // Please keep in mind that values contain padding.
-		pos += len(packet.attributes[i].Value)
+		copy(p[pos:], this.attributes[i].Value) // Please keep in mind that values contain padding.
+		pos += len(this.attributes[i].Value)
 	}
-	binary.BigEndian.PutUint16(p[2:4], packet.length) // var length uint16 = uint16(len(p) - 20)
+	binary.BigEndian.PutUint16(p[2:4], this.length) // var length uint16 = uint16(len(p) - 20)
 	return p
 }
 
@@ -252,25 +252,21 @@ func (packet Packet) Bytes() []byte {
 //
 // NOTE
 // The length of the packet is initialized to the value 20, which is the length of the header.
-func MakePacket(b []byte) (Packet, error) {
-	return makePacket(binary.BigEndian.Uint16(b[0:2]), binary.BigEndian.Uint16(b[2:4]), b[4:])
+func NewPacket(b []byte) (*Packet, error) {
+	return newPacket(binary.BigEndian.Uint16(b[0:2]), binary.BigEndian.Uint16(b[2:4]), b[4:])
 }
 
-func makePacket(_type uint16, _length uint16, b []byte) (Packet, error) {
+func newPacket(_type uint16, _length uint16, b []byte) (*Packet, error) {
+	b_len := len(b)
+	if b_len < 20-4 || b_len > 65535-4 {
+		return nil, fmt.Errorf("Invalid STUN packet: %d bytes", b_len)
+	}
 	pkt := Packet{
 		_type:      _type,
 		cookie:     MAGIC_COOKIE,
 		length:     _length, // Header (20 bytes) is **not** included.
 		attributes: make([]Attribute, 0, 10),
 	}
-	b_len := len(b)
-	if b_len < 20-4 {
-		return pkt, fmt.Errorf("Invalid STUN packet: %d bytes", b_len)
-	}
-	if b_len > 65535-4 {
-		return pkt, fmt.Errorf("Invalid STUN packet: %d bytes", b_len)
-	}
-
 	// pkt.cookie = binary.BigEndian.Uint32(b[0:4])
 	copy(pkt.id[:], b[4:16])
 
@@ -285,7 +281,7 @@ func makePacket(_type uint16, _length uint16, b []byte) (Packet, error) {
 		value := b[pos+4 : pos+4+length]                    // The value.
 		attribute, err := makeAttribute(vtype, value)
 		if nil != err {
-			return pkt, err
+			return nil, err
 		}
 		pkt.attributes = append(pkt.attributes, attribute)
 
@@ -293,7 +289,7 @@ func makePacket(_type uint16, _length uint16, b []byte) (Packet, error) {
 		if RFC3489 == rfc {
 			pos += 4 + length
 			if 0 != pos%4 {
-				return pkt, fmt.Errorf("Invalid value length in attribute")
+				return nil, fmt.Errorf("Invalid value length in attribute")
 			}
 		} else {
 			// RFC 5389 only: we must take care of the padding.
@@ -301,23 +297,23 @@ func makePacket(_type uint16, _length uint16, b []byte) (Packet, error) {
 		}
 	}
 
-	return pkt, nil
+	return &pkt, nil
 }
 
 // This function generates a textual representation of a given STUN packet.
 //
 // OUTPUT
 // - The textual representation.
-func (packet Packet) String() string {
+func (this Packet) String() string {
 	var buffer bytes.Buffer
-	buffer.WriteString(fmt.Sprintf("% -14s: 0x%04x (%s)\n", "Type", packet._type, message_types[packet._type]))
-	buffer.WriteString(fmt.Sprintf("% -14s: %d (0x%04x)\n", "Length", packet.length, packet.length))
-	buffer.WriteString(fmt.Sprintf("% -14s: 0x%x\n", "Cookie", packet.cookie))
-	buffer.WriteString(fmt.Sprintf("% -14s: % x\n", "ID", packet.id[:]))
-	buffer.WriteString(fmt.Sprintf("% -14s: %d\n", "NAttributes", packet.NAttributes()))
+	buffer.WriteString(fmt.Sprintf("% -14s: 0x%04x (%s)\n", "Type", this._type, message_types[this._type]))
+	buffer.WriteString(fmt.Sprintf("% -14s: %d (0x%04x)\n", "Length", this.length, this.length))
+	buffer.WriteString(fmt.Sprintf("% -14s: 0x%x\n", "Cookie", this.cookie))
+	buffer.WriteString(fmt.Sprintf("% -14s: % x\n", "ID", this.id[:]))
+	buffer.WriteString(fmt.Sprintf("% -14s: %d\n", "NAttributes", this.NAttributes()))
 
-	for i := 0; i < packet.NAttributes(); i++ {
-		attr := packet.Attribute(i)
+	for i := 0; i < this.NAttributes(); i++ {
+		attr := this.Attribute(i)
 		buffer.WriteString(fmt.Sprintf("% -14s: %d (total length %d)\n", "Attribute No.", i+1, attr.Length+4))
 		buffer.WriteString(fmt.Sprintf("% -14s: 0x%04x (%s)\n", "Type", attr.Type, attribute_names[attr.Type]))
 		buffer.WriteString(fmt.Sprintf("% -14s: %d\n", "length", attr.Length))
@@ -334,8 +330,8 @@ func (packet Packet) String() string {
 //
 // OUPUT
 // - The nicely formatted representation if the given list of bytes.
-func (packet Packet) HexString() string {
-	p := packet.Bytes()
+func (this Packet) HexString() string {
+	p := this.Bytes()
 	var buffer bytes.Buffer
 	length := len(p)
 	rest := length % 4
@@ -369,9 +365,9 @@ func (packet Packet) HexString() string {
 // - The IP address.
 // - The port number.
 // - The error flag.
-func (packet Packet) MappedAddress() (bool, uint16, string, uint16, error) {
-	for i := 0; i < packet.NAttributes(); i++ {
-		attr := packet.Attribute(i)
+func (this Packet) MappedAddress() (bool, uint16, string, uint16, error) {
+	for i := 0; i < this.NAttributes(); i++ {
+		attr := this.Attribute(i)
 		if ATTRIBUTE_MAPPED_ADDRESS != attr.Type {
 			continue
 		}
@@ -391,9 +387,9 @@ func (packet Packet) MappedAddress() (bool, uint16, string, uint16, error) {
 // - The IP address.
 // - The port number.
 // - The error flag.
-func (packet Packet) ChangedAddress() (bool, uint16, string, uint16, error) {
-	for i := 0; i < packet.NAttributes(); i++ {
-		attr := packet.Attribute(i)
+func (this Packet) ChangedAddress() (bool, uint16, string, uint16, error) {
+	for i := 0; i < this.NAttributes(); i++ {
+		attr := this.Attribute(i)
 		if ATTRIBUTE_CHANGED_ADDRESS != attr.Type {
 			continue
 		}
@@ -413,9 +409,9 @@ func (packet Packet) ChangedAddress() (bool, uint16, string, uint16, error) {
 // - The IP address.
 // - The port number.
 // - The error flag.
-func (packet Packet) XorMappedAddress() (bool, uint16, string, uint16, error) {
-	for i := 0; i < packet.NAttributes(); i++ {
-		attr := packet.Attribute(i)
+func (this Packet) XorMappedAddress() (bool, uint16, string, uint16, error) {
+	for i := 0; i < this.NAttributes(); i++ {
+		attr := this.Attribute(i)
 		if (ATTRIBUTE_XOR_MAPPED_ADDRESS != attr.Type) && (ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP != attr.Type) {
 			continue
 		}

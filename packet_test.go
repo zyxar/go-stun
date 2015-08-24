@@ -7,16 +7,16 @@ import (
 
 func TestPacketCreation(t *testing.T) {
 	head := []byte{0x00, 0x01, 0x00, 0x00, 0x21, 0x12, 0xA4, 0x42, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12}
-	packet, err := makePacket(TYPE_BINDING_REQUEST, 0, head[4:])
+	packet, err := newPacket(TYPE_BINDING_REQUEST, 0, head[4:])
 	if err != nil {
 		t.Error(err)
 	}
 	if bytes.Compare(packet.Bytes(), head) != 0 {
 		t.Error("makePacket failed")
 	}
-	packet2, _ := MakePacket(head)
+	packet2, _ := NewPacket(head)
 	if bytes.Compare(packet2.Bytes(), head) != 0 {
-		t.Error("MakePacket failed")
+		t.Error("NewPacket failed")
 	}
 
 	data := []byte{
@@ -42,7 +42,7 @@ func TestPacketCreation(t *testing.T) {
 		0x64, 0x61, 0x2e, 0x6f,
 		0x72, 0x67, 0x20, 0x30,
 		0x2e, 0x39, 0x36, 0x00}
-	packet3, err := MakePacket(data)
+	packet3, err := NewPacket(data)
 	if err != nil {
 		t.Error(err)
 	}
