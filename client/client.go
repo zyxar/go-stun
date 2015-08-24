@@ -116,7 +116,6 @@ func Init(in_server string) {
 // - The response.
 // - The error flag.
 func SendBinding(in_destination_address *string) (requestResponse, error) {
-	var attribute stun.Attribute
 	var err error
 	var connection net.Conn
 	var resp requestResponse
@@ -131,18 +130,14 @@ func SendBinding(in_destination_address *string) (requestResponse, error) {
 	})
 
 	// Add The software attribute.
-	attribute, err = stun.MakeSoftwareAttribute("Test01")
-	if nil != err {
+	if err = packet.AddSoftwareAttribute("Test01"); nil != err {
 		return resp, err
 	}
-	packet.AddAttribute(attribute)
 
 	// Add the fingerprint attribute.
-	attribute, err = stun.MakeFingerprintAttribute(&packet)
-	if nil != err {
+	if err = packet.AddFingerprintAttribute(); nil != err {
 		return resp, err
 	}
-	packet.AddAttribute(attribute)
 
 	// Open a connection to the server.
 	if nil != in_destination_address {
@@ -172,7 +167,6 @@ func SendBinding(in_destination_address *string) (requestResponse, error) {
 // - The response.
 // - The error flag.
 func SendChangeRequest(in_change_ip bool) (requestResponse, error) {
-	var attribute stun.Attribute
 	var err error
 	var connection net.Conn
 	var resp requestResponse
@@ -186,25 +180,19 @@ func SendChangeRequest(in_change_ip bool) (requestResponse, error) {
 	})
 
 	// Add The software attribute
-	attribute, err = stun.MakeSoftwareAttribute("Test01")
-	if nil != err {
+	if err = packet.AddSoftwareAttribute("Test01"); nil != err {
 		return resp, err
 	}
-	packet.AddAttribute(attribute)
 
 	// Add The software attribute
-	attribute, err = stun.MakeChangeRequestAttribute(in_change_ip, true)
-	if nil != err {
+	if err = packet.AddChangeRequestAttribute(in_change_ip, true); nil != err {
 		return resp, err
 	}
-	packet.AddAttribute(attribute)
 
 	// Add the fingerprint attribute.
-	attribute, err = stun.MakeFingerprintAttribute(&packet)
-	if nil != err {
+	if err = packet.AddFingerprintAttribute(); nil != err {
 		return resp, err
 	}
-	packet.AddAttribute(attribute)
 
 	// Open a connection to the server.
 	connection, err = net.Dial("udp", server_transport_address)

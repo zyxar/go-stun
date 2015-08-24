@@ -81,33 +81,22 @@ func TestPacketAddAttr(t *testing.T) {
 	if pkt.NAttributes() != 0 {
 		t.Errorf("NAttributes incorrect: %d\n", pkt.NAttributes())
 	}
-
-	attribute, err := MakeSoftwareAttribute("TEST ROUTINE")
-	if err != nil {
+	var err error
+	if err = pkt.AddSoftwareAttribute("TEST ROUTINE"); err != nil {
 		t.Error(err)
 	}
-	pkt.AddAttribute(attribute)
 	if pkt.NAttributes() != 1 {
 		t.Errorf("NAttributes incorrect: %d\n", pkt.NAttributes())
 	}
-	if attribute.String() != "TEST ROUTINE" {
-		t.Error("attribute invalid")
-	}
-
-	attribute, err = MakeFingerprintAttribute(&pkt)
-	if err != nil {
+	if err = pkt.AddChangeRequestAttribute(true, true); err != nil {
 		t.Error(err)
 	}
-	pkt.AddAttribute(attribute)
 	if pkt.NAttributes() != 2 {
 		t.Errorf("NAttributes incorrect: %d\n", pkt.NAttributes())
 	}
-
-	attribute, err = MakeChangeRequestAttribute(true, true)
-	if err != nil {
+	if err = pkt.AddFingerprintAttribute(); err != nil {
 		t.Error(err)
 	}
-	pkt.AddAttribute(attribute)
 	if pkt.NAttributes() != 3 {
 		t.Errorf("NAttributes incorrect: %d\n", pkt.NAttributes())
 	}

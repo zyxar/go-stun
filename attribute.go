@@ -153,7 +153,7 @@ type Attribute struct {
 // OUTPUT
 // - The new attribute.
 // - The error flag.
-func MakeAttribute(_type uint16, value []byte) (attr Attribute, err error) {
+func makeAttribute(_type uint16, value []byte) (attr Attribute, err error) {
 	if (0 != len(value)%4) && (rfc == RFC3489) {
 		err = errors.New("STUN is configured to be compliant with RFC 3489! Value's length must be a multiple of 4 bytes!")
 		return
@@ -169,70 +169,6 @@ func MakeAttribute(_type uint16, value []byte) (attr Attribute, err error) {
 	attr.Length = uint16(len(value))
 	copy(attr.Value, b)
 	return attr, nil
-}
-
-// This function creates a "FINGERPRINT" attribute.
-// See http://golang.org/src/pkg/hash/crc32/crc32.go
-//
-// INPUT
-// - packet: Pointer to the STUN packet that is used to calculate the fingerprint.
-//
-// OUTPUT
-// - The STUN's attribute.
-// - The error flag.
-//
-// WARNING
-// The FINGERPRINT attribute should be the last attribute of the STUN packet.
-func MakeFingerprintAttribute(packet *Packet) (attr Attribute, err error) {
-	crc := crc32Checksum(packet.Bytes())
-	b := make([]byte, 4)
-	binary.BigEndian.PutUint32(b, crc)
-	attr, err = MakeAttribute(ATTRIBUTE_FINGERPRINT, b)
-	return
-}
-
-// This function creates a "SOFTWARE" attribute.
-//
-// INPUT
-// - name: name of the software.
-//
-// OUTPUT
-// - The STUN's attribute.
-// - The error flag.
-func MakeSoftwareAttribute(name string) (attr Attribute, err error) {
-	if len(name) > 763 {
-		err = errors.New("Software's name if too long (more than 763 bytes!)")
-		return
-	}
-	b := []byte(name)
-	attr, err = MakeAttribute(ATTRIBUTE_SOFTWARE, b)
-	return
-}
-
-// This function creates a "CHANGE RESQUEST" attribute.
-//
-// INPUT
-// - changIP: shall we change the IP address?
-// - changPort: shall we change the port number?
-//
-// OUTPUT
-// - The STUN's attribute.
-// - The error flag.
-func MakeChangeRequestAttribute(changIP, changPort bool) (attr Attribute, err error) {
-	var value []byte = make([]byte, 4, 4)
-
-	// RFC 3489: The CHANGE-REQUEST attribute is used by the client to request that
-	// the server use a different address and/or port when sending the
-	// response.  The attribute is 32 bits long, although only two bits (A
-	// and B) are used.
-	if changIP {
-		value[3] = value[3] | 0x04
-	} // b:0100
-	if changPort {
-		value[3] = value[3] | 0x02
-	} // b:0010
-	attr, err = MakeAttribute(ATTRIBUTE_CHANGE_REQUEST, value)
-	return
 }
 
 /* ------------------------------------------------------------------------------------------------ */

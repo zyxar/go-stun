@@ -18,6 +18,7 @@ package stun
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 )
 
@@ -282,7 +283,7 @@ func makePacket(_type uint16, _length uint16, b []byte) (Packet, error) {
 		vtype := binary.BigEndian.Uint16(b[pos : pos+2])    // Type of the attribute.
 		length := binary.BigEndian.Uint16(b[pos+2 : pos+4]) // Length of the attribute (without the padding !!!!!!)
 		value := b[pos+4 : pos+4+length]                    // The value.
-		attribute, err := MakeAttribute(vtype, value)
+		attribute, err := makeAttribute(vtype, value)
 		if nil != err {
 			return pkt, err
 		}
@@ -424,4 +425,72 @@ func (packet Packet) XorMappedAddress() (bool, uint16, string, uint16, error) {
 		return true, family, xip, xport, err
 	}
 	return false, 0, "", 0, nil
+}
+
+// This function adds a "FINGERPRINT" attribute to packet.
+// See http://golang.org/src/pkg/hash/crc32/crc32.go
+//
+// OUTPUT
+// - The error flag.
+//
+// WARNING
+// The FINGERPRINT attribute should be the last attribute of the STUN packet.
+func (this *Packet) AddFingerprintAttribute() error {
+	crc := crc32Checksum(this.Bytes())
+	b := make([]byte, 4)
+	binary.BigEndian.PutUint32(b, crc)
+	if attr, err := makeAttribute(ATTRIBUTE_FINGERPRINT, b); err != nil {
+		return err
+	} else {
+		this.AddAttribute(attr)
+	}
+	return nil
+}
+
+// This function adds a "SOFTWARE" attribute to packet.
+//
+// INPUT
+// - name: name of the software.
+//
+// OUTPUT
+// - The error flag.
+func (this *Packet) AddSoftwareAttribute(name string) error {
+	if len(name) > 763 {
+		return errors.New("Software's name if too long (more than 763 bytes!)")
+	}
+	b := []byte(name)
+	if attr, err := makeAttribute(ATTRIBUTE_SOFTWARE, b); err != nil {
+		return err
+	} else {
+		this.AddAttribute(attr)
+	}
+	return nil
+}
+
+// This function adds a "CHANGE RESQUEST" attribute to packet.
+//
+// INPUT
+// - changIP: shall we change the IP address?
+// - changPort: shall we change the port number?
+//
+// OUTPUT
+// - The error flag.
+func (this *Packet) AddChangeRequestAttribute(changIP, changPort bool) error {
+	var value []byte = make([]byte, 4, 4)
+
+	// RFC 3489: The CHANGE-REQUEST attribute is used by the client to request that
+	// the server use a different address and/or port when sending the
+	// response.  The attribute is 32 bits long, although only two bits (A and B) are used.
+	if changIP {
+		value[3] = value[3] | 0x04
+	} // b:0100
+	if changPort {
+		value[3] = value[3] | 0x02
+	} // b:0010
+	if attr, err := makeAttribute(ATTRIBUTE_CHANGE_REQUEST, value); err != nil {
+		return err
+	} else {
+		this.AddAttribute(attr)
+	}
+	return nil
 }
