@@ -22,177 +22,21 @@ import (
 	"testing"
 )
 
-func TestInetSplit(t *testing.T) {
-	var ip string
-	var port int
-	var err error
-
-	// ----------------------------------------------------------------------
-	// Testing IPV4
-	// ----------------------------------------------------------------------
-
-	// Test OK
-	ip, port, err = InetSplit("192.168.0.1:80")
-	if nil != err {
-		t.Errorf("Error: %s", err)
-	}
-	if ip != "192.168.0.1" {
-		t.Errorf("Extracted IP: %s, given %s", ip, "192.168.0.1")
-	}
-	if port != 80 {
-		t.Errorf("Extracted port number: %d, given %d", port, 80)
-	}
-
-	// Test KO
-	ip, port, err = InetSplit("192.168.0.1.15.16:80")
-	if nil == err {
-		t.Errorf("The test should fail.")
-	}
-
-	// ----------------------------------------------------------------------
-	// Testing IPV6
-	// ----------------------------------------------------------------------
-
-	ip, port, err = InetSplit("[0011:2233:4455:6677:8899:AABB:CCDD:EEFF]:125")
-	if nil != err {
-		t.Errorf("Error: %s", err)
-	}
-	if ip != "0011:2233:4455:6677:8899:AABB:CCDD:EEFF" {
-		t.Errorf("Extracted IP: %s, given %s", ip, "0011:2233:4455:6677:8899:AABB:CCDD:EEFF")
-	}
-	if port != 125 {
-		t.Errorf("Extracted port number: %d, given %d", port, 125)
-	}
-
-	ip, port, err = InetSplit("[0011:22:4455:6677:8899:A:CCDD:E]:125")
-	if nil != err {
-		t.Errorf("Error: %s", err)
-	}
-	if ip != "0011:22:4455:6677:8899:A:CCDD:E" {
-		t.Errorf("Extracted IP: %s, given %s", ip, "0011:22:4455:6677:8899:A:CCDD:E")
-	}
-	if port != 125 {
-		t.Errorf("Extracted port number: %d, given %d", port, 125)
-	}
-
-	ip, port, err = InetSplit("[0011:22:4455:6677:8899:A:CCDD:abcd]:125")
-	if nil != err {
-		t.Errorf("Error: %s", err)
-	}
-	if ip != "0011:22:4455:6677:8899:A:CCDD:abcd" {
-		t.Errorf("Extracted IP: %s, given %s", ip, "0011:22:4455:6677:8899:A:CCDD:abcd")
-	}
-	if port != 125 {
-		t.Errorf("Extracted port number: %d, given %d", port, 125)
-	}
-
-	ip, port, err = InetSplit("[0011:22:4455:6677:8899:A:CCDD:E:A]:125")
-	if nil == err {
-		t.Errorf("The test should fail.")
+// See http://www.armware.dk/RFC/rfc/rfc5769.html
+func TestCrc32Checksum(t *testing.T) {
+	var b []byte = []byte{0x01, 0x01, 0x00, 0x48, 0x21, 0x12, 0xa4, 0x42, 0xb7, 0xe7, 0xa7, 0x01, 0xbc, 0x34, 0xd6, 0x86, 0xfa, 0x87, 0xdf, 0xae, 0x80, 0x22, 0x00, 0x0b, 0x74, 0x65, 0x73, 0x74, 0x20, 0x76, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x20, 0x00, 0x20, 0x00, 0x14, 0x00, 0x02, 0xa1, 0x47, 0x01, 0x13, 0xa9, 0xfa, 0xa5, 0xd3, 0xf1, 0x79, 0xbc, 0x25, 0xf4, 0xb5, 0xbe, 0xd2, 0xb9, 0xd9, 0x00, 0x08, 0x00, 0x14, 0xa3, 0x82, 0x95, 0x4e, 0x4b, 0xe6, 0x7b, 0xf1, 0x17, 0x84, 0xc9, 0x7c, 0x82, 0x92, 0xc2, 0x75, 0xbf, 0xe3, 0xed, 0x41}
+	if 0xc8fb0b4c != crc32Checksum(b) {
+		t.Errorf("Invalid fingerptint.")
 	}
 }
 
-func TestIpToBytes(t *testing.T) {
-	// Test OK
-	bytes, err := IpToBytes("192.168.0.1")
-	if nil != err {
-		t.Errorf("Error: %s", err)
-	}
-	if 192 != bytes[0] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: 192", bytes[0])
-	}
-	if 168 != bytes[1] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: 168", bytes[1])
-	}
-	if 0 != bytes[2] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: 0  ", bytes[2])
-	}
-	if 1 != bytes[3] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: 1  ", bytes[3])
-	}
-
-	// Test OK
-	bytes, err = IpToBytes("0011:2233:4455:6677:8899:AABB:CCDD:EEFF")
-	if nil != err {
-		t.Errorf("Error: %s", err)
-	}
-
-	if 0x00 != bytes[0] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: 00", bytes[0])
-	}
-	if 0x11 != bytes[1] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: 11", bytes[1])
-	}
-	if 0x22 != bytes[2] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: 22", bytes[2])
-	}
-	if 0x33 != bytes[3] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: 33", bytes[3])
-	}
-	if 0x44 != bytes[4] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: 44", bytes[4])
-	}
-	if 0x55 != bytes[5] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: 55", bytes[5])
-	}
-	if 0x66 != bytes[6] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: 66", bytes[6])
-	}
-	if 0x77 != bytes[7] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: 77", bytes[7])
-	}
-	if 0x88 != bytes[8] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: 88", bytes[8])
-	}
-	if 0x99 != bytes[9] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: 99", bytes[9])
-	}
-	if 0xAA != bytes[10] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: AA", bytes[10])
-	}
-	if 0xBB != bytes[11] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: BB", bytes[11])
-	}
-	if 0xCC != bytes[12] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: CC", bytes[12])
-	}
-	if 0xDD != bytes[13] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: DD", bytes[13])
-	}
-	if 0xEE != bytes[14] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: EE", bytes[14])
-	}
-	if 0xFF != bytes[15] {
-		t.Errorf("Byte is not valid. Extracted: %d, given: FF", bytes[15])
-	}
-
-	// Test KO
-	bytes, err = IpToBytes("800.168.0.1")
-	if nil == err {
-		t.Errorf("Error: the test should have failed!")
-	}
-
-	// Test KO
-	bytes, err = IpToBytes("800.168.0.1.12")
-	if nil == err {
-		t.Errorf("Error: the test should have failed!")
-	}
-
-	// Test KO
-	bytes, err = IpToBytes("FFFFA.2233.4455.6677.8899.AABB.CCDD.EEFF")
-	if nil == err {
-		t.Errorf("Error: the test should have failed!")
-	}
-
-}
-
-func TestBytesToIp(t *testing.T) {
+func TestParseIP(t *testing.T) {
 	var err error
 	var ip string
 	ipv4 := []byte{0xAA, 0xBB, 0xCC, 0xDD}
 	ipv6 := []byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF}
 
-	ip, err = BytesToIp(ipv4)
+	ip, err = parseIP(ipv4)
 	if nil != err {
 		t.Errorf(fmt.Sprintf("%s", err))
 	}
@@ -200,28 +44,28 @@ func TestBytesToIp(t *testing.T) {
 		t.Errorf(fmt.Sprintf("Invalid IPV4: given 170.187.204.221, got %s", ip))
 	}
 
-	ip, err = BytesToIp(ipv6)
+	ip, err = parseIP(ipv6)
 	if nil != err {
 		t.Errorf(fmt.Sprintf("%s", err))
 	}
-	if "0011:2233:4455:6677:8899:AABB:CCDD:EEFF" != strings.ToUpper(ip) {
-		t.Errorf(fmt.Sprintf("Invalid IPV4: given 0011.2233.4455.6677.8899.AABB.CCDD.EEFF, got %s", ip))
+	if "11:2233:4455:6677:8899:AABB:CCDD:EEFF" != strings.ToUpper(ip) {
+		t.Errorf(fmt.Sprintf("Invalid IPV6: given 11.2233.4455.6677.8899.AABB.CCDD.EEFF, got %s", ip))
 	}
 
 	ipv4 = []byte{0xAA, 0xBB, 0xCC, 0xDD, 0xEE}
-	ip, err = BytesToIp(ipv4)
+	ip, err = parseIP(ipv4)
 	if nil == err {
 		t.Errorf(fmt.Sprintf("Test should not succeed."))
 	}
 
 	ipv4 = []byte{0xAA, 0xBB, 0xCC}
-	ip, err = BytesToIp(ipv4)
+	ip, err = parseIP(ipv4)
 	if nil == err {
 		t.Errorf(fmt.Sprintf("Test should not succeed."))
 	}
 
 	ipv6 = []byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE}
-	ip, err = BytesToIp(ipv6)
+	ip, err = parseIP(ipv6)
 	if nil == err {
 		t.Errorf(fmt.Sprintf("Test should not succeed."))
 	}

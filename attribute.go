@@ -237,11 +237,10 @@ func (attr Attribute) XorMappedAddress() (family uint16, addr string, port uint1
 		err = fmt.Errorf("Invalid address' family: 0x%02x", family)
 		return
 	}
-	if addr, err = BytesToIp(attr.Value[4:]); nil != err {
+	port = binary.BigEndian.Uint16(attr.Value[2:4])
+	if addr, err = parseIP(attr.Value[4:]); nil != err {
 		return
 	}
-	port = binary.BigEndian.Uint16(attr.Value[2:4])
-
 	if ATTRIBUTE_FAMILY_IPV4 == family { // IPV4
 		if len(attr.Value[4:]) != 4 {
 			err = fmt.Errorf("Invalid IPV4 address: % x", attr.Value[4:])
@@ -262,7 +261,7 @@ func (attr Attribute) XorMappedAddress() (family uint16, addr string, port uint1
 			xored_ip = append(xored_ip, attr.Value[i+4]^cookie[i])
 		}
 	}
-	if addr_xor, err = BytesToIp(xored_ip); nil != err {
+	if addr_xor, err = parseIP(xored_ip); nil != err {
 		return
 	}
 	port_xor = port ^ 0x2112
@@ -373,6 +372,6 @@ func (attr Attribute) String() string {
 func (attr Attribute) getAddress() (family uint16, ip string, port uint16, err error) {
 	family = binary.BigEndian.Uint16(attr.Value[0:2])
 	port = binary.BigEndian.Uint16(attr.Value[2:4])
-	ip, err = BytesToIp(attr.Value[4:])
+	ip, err = parseIP(attr.Value[4:])
 	return
 }
