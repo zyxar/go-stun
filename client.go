@@ -168,7 +168,7 @@ func sendRequest(conn net.Conn, req *Packet) (*Packet, error) {
 		}
 
 		// Send the packet.
-		p := req.Bytes()
+		p := req.Encode()
 		count, err = conn.Write(p)
 		if err != nil {
 			return nil, err

@@ -216,7 +216,7 @@ func (this *Packet) Attribute(i int) Attribute {
 //
 // OUTPUT
 // - The sequence of bytes.
-func (this Packet) Bytes() []byte {
+func (this Packet) Encode() []byte {
 	length := 20
 	for i := 0; i < len(this.attributes); i++ {
 		length += 4 + len(this.attributes[i].Value)
@@ -332,7 +332,7 @@ func (this Packet) String() string {
 // OUPUT
 // - The nicely formatted representation if the given list of bytes.
 func (this Packet) HexString() string {
-	p := this.Bytes()
+	p := this.Encode()
 	var buffer bytes.Buffer
 	length := len(p)
 	rest := length % 4
@@ -433,7 +433,7 @@ func (this Packet) XorMappedAddress() (bool, uint16, string, uint16, error) {
 // WARNING
 // The FINGERPRINT attribute should be the last attribute of the STUN packet.
 func (this *Packet) AddFingerprintAttribute() error {
-	crc := crc32Checksum(this.Bytes())
+	crc := crc32Checksum(this.Encode())
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, crc)
 	if attr, err := makeAttribute(ATTRIBUTE_FINGERPRINT, b); err != nil {

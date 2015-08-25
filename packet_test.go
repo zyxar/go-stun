@@ -26,11 +26,11 @@ func TestPacketCreation(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if bytes.Compare(packet.Bytes(), head) != 0 {
+	if bytes.Compare(packet.Encode(), head) != 0 {
 		t.Error("makePacket failed")
 	}
 	packet2, _ := NewPacket(head)
-	if bytes.Compare(packet2.Bytes(), head) != 0 {
+	if bytes.Compare(packet2.Encode(), head) != 0 {
 		t.Error("NewPacket failed")
 	}
 
@@ -80,7 +80,7 @@ func TestPacketBytes(t *testing.T) {
 		cookie: MAGIC_COOKIE,
 	}
 	copy(pkt.id[:], head[8:])
-	if bytes.Compare(head, pkt.Bytes()) != 0 {
+	if bytes.Compare(head, pkt.Encode()) != 0 {
 		t.Error("packet ->Bytes failed")
 	}
 }
