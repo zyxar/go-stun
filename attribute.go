@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
 	"unicode/utf8"
 )
 
@@ -31,7 +32,7 @@ const (
 	/* Attributes' types.                                                                               */
 	/* See: Session Traversal Utilities for NAT (STUN) Parameters                                       */
 	/*      http://www.iana.org/assignments/stun-parameters/stun-parameters.xml                         */
-	/* Note: Value ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP is not mentioned in the above document.         */
+	/* Note: Value ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP is not mentioned in the above document.             */
 	/*       But it is used by servers.                                                                 */
 	/* ------------------------------------------------------------------------------------------------ */
 	ATTRIBUTE_MAPPED_ADDRESS           = 0x0001
@@ -124,7 +125,7 @@ var attribute_names = map[uint16]string{
 	ATTRIBUTE_CISCO_STUN_FLOWDATA:      "CISCO_STUN_FLOWDATA",
 }
 
-// This structure represents a message's attribute of a STUM message.
+// This structure represents a message's attribute of a STUN message.
 // RFC 5389: The value in the length field MUST contain the length of the Value
 //           part of the attribute, prior to padding, measured in bytes.  Since
 //           STUN aligns attributes on 32-bit boundaries, attributes whose content
@@ -172,49 +173,6 @@ func makeAttribute(_type uint16, value []byte) (attr Attribute, err error) {
 	return attr, nil
 }
 
-/* ------------------------------------------------------------------------------------------------ */
-/* Get                                                                                              */
-/* ------------------------------------------------------------------------------------------------ */
-
-// Given an attribute that represents a "mapped" address, this function returns the transport address.
-//
-// OUTPUT
-// - The address' family (1 for IPV4 or 2 for IPV6).
-// - The IP address.
-//   + Example for IPV4: "192.168.0.1"
-//   + Example for IPV6: "0011:2233:4455:6677:8899:AABB:CCDD:EEFF"
-// - The port number.
-// - The error flag.
-func (attr Attribute) MappedAddress() (uint16, string, uint16, error) {
-	return attr.getAddress()
-}
-
-// Given an attribute that represents a "source" address, this function returns the transport address.
-//
-// OUTPUT
-// - The address' family (1 for IPV4 or 2 for IPV6).
-// - The IP address.
-//   + Example for IPV4: "192.168.0.1"
-//   + Example for IPV6: "0011:2233:4455:6677:8899:AABB:CCDD:EEFF"
-// - The port number.
-// - The error flag.
-func (attr Attribute) SourceAddress() (uint16, string, uint16, error) {
-	return attr.getAddress()
-}
-
-// Given an attribute that represents a "changed" address, this function returns the transport address.
-//
-// OUTPUT
-// - The address' family (1 for IPV4 or 2 for IPV6).
-// - The IP address.
-//   + Example for IPV4: "192.168.0.1"
-//   + Example for IPV6: "0011:2233:4455:6677:8899:AABB:CCDD:EEFF"
-// - The port number.
-// - The error flag.
-func (attr Attribute) ChangedAddress() (uint16, string, uint16, error) {
-	return attr.getAddress()
-}
-
 // Given an attribute that represents a "XOR mapped" address, this function returns the transport address.
 // See http://www.nexcom.fr/2012/06/stun-la-base/
 //
@@ -227,8 +185,7 @@ func (attr Attribute) ChangedAddress() (uint16, string, uint16, error) {
 // - The XORED IP address (should be equal to the mapped address).
 // - The XORED port (should be equal to the mapped port).
 // - The error flag.
-//family, ip_string, port, xored_ip_string, xored_port, nil
-func (attr Attribute) XorMappedAddress() (family uint16, addr string, port uint16, addr_xor string, port_xor uint16, err error) {
+func (attr Attribute) XorMappedAddress() (family uint16, addr net.IP, port uint16, addr_xor net.IP, port_xor uint16, err error) {
 	cookie := []byte{0x21, 0x12, 0xA4, 0x42} // 0x2112A442
 	xored_ip := make([]byte, 0, 16)
 
@@ -238,9 +195,7 @@ func (attr Attribute) XorMappedAddress() (family uint16, addr string, port uint1
 		return
 	}
 	port = binary.BigEndian.Uint16(attr.Value[2:4])
-	if addr, err = parseIP(attr.Value[4:]); nil != err {
-		return
-	}
+	addr = parseIP(attr.Value[4:])
 	if ATTRIBUTE_FAMILY_IPV4 == family { // IPV4
 		if len(attr.Value[4:]) != 4 {
 			err = fmt.Errorf("Invalid IPV4 address: % x", attr.Value[4:])
@@ -254,16 +209,11 @@ func (attr Attribute) XorMappedAddress() (family uint16, addr string, port uint1
 			err = fmt.Errorf("Invalid IPV6 address: % x", attr.Value[4:])
 			return
 		}
-		// long_magic := make([]byte, 0, 16)
-		// long_magic = append(long_magic, cookie...)
-		// long_magic = append(long_magic, attr.Packet.id[0:12]...)
 		for i := 0; i < 16; i++ {
 			xored_ip = append(xored_ip, attr.Value[i+4]^cookie[i])
 		}
 	}
-	if addr_xor, err = parseIP(xored_ip); nil != err {
-		return
-	}
+	addr_xor = parseIP(xored_ip)
 	port_xor = port ^ 0x2112
 	return
 }
@@ -318,25 +268,17 @@ func (attr Attribute) ChangeRequest() (bool, bool, error) {
 func (attr Attribute) String() string {
 	switch attr.Type {
 	case ATTRIBUTE_MAPPED_ADDRESS, ATTRIBUTE_SOURCE_ADDRESS, ATTRIBUTE_CHANGED_ADDRESS:
-		family, ip, port, err := attr.getAddress()
-		if nil != err {
-			return ""
-		}
-		if 0x01 == family {
-			return fmt.Sprintf("IPV4: %s:%d", ip, port)
-		} else {
-			return fmt.Sprintf("IPV6: [%s]:%d", ip, port)
-		}
+		_, ip, port := attr.decode()
+		addr := net.UDPAddr{IP: ip, Port: int(port)}
+		return addr.String()
 	case ATTRIBUTE_XOR_MAPPED_ADDRESS, ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP:
-		family, ip, port, xored_ip, xored_port, err := attr.XorMappedAddress()
+		_, ip, port, xored_ip, xored_port, err := attr.XorMappedAddress()
 		if nil != err {
 			return ""
 		}
-		if 0x01 == family {
-			return fmt.Sprintf("IPV4: %s:%d => %s:%d", ip, port, xored_ip, xored_port)
-		} else {
-			return fmt.Sprintf("IPV6: [%s]:%d => [%s]:%d", ip, port, xored_ip, xored_port)
-		}
+		addr := net.UDPAddr{IP: ip, Port: int(port)}
+		addr_xor := net.UDPAddr{IP: xored_ip, Port: int(xored_port)}
+		return fmt.Sprintf("%s => %s", addr.String(), addr_xor.String())
 	case ATTRIBUTE_SOFTWARE:
 		return attr.Software()
 	case ATTRIBUTE_FINGERPRINT:
@@ -356,10 +298,6 @@ func (attr Attribute) String() string {
 	return ""
 }
 
-/* ------------------------------------------------------------------------------------------------ */
-/* Privates                                                                                         */
-/* ------------------------------------------------------------------------------------------------ */
-
 // Given an attribute that represents an address, this function returns the transport address (IP and port number).
 //
 // OUTPUT
@@ -368,10 +306,6 @@ func (attr Attribute) String() string {
 //   + Example for IPV4: "192.168.0.1"
 //   + Example for IPV6: "0011:2233:4455:6677:8899:AABB:CCDD:EEFF"
 // - The port number.
-// - The error flag.
-func (attr Attribute) getAddress() (family uint16, ip string, port uint16, err error) {
-	family = binary.BigEndian.Uint16(attr.Value[0:2])
-	port = binary.BigEndian.Uint16(attr.Value[2:4])
-	ip, err = parseIP(attr.Value[4:])
-	return
+func (attr *Attribute) decode() (uint16, net.IP, uint16) {
+	return binary.BigEndian.Uint16(attr.Value[0:2]), parseIP(attr.Value[4:]), binary.BigEndian.Uint16(attr.Value[2:4])
 }

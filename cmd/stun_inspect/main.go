@@ -33,7 +33,7 @@ func main() {
 		serverPort *int    = flag.Int("port", 3478, "port number for the host server.")
 		verbose    *bool   = flag.Bool("verbose", false, "verbose.")
 		ips        []string
-		ip         string
+		addr       net.UDPAddr
 		nat        int
 	)
 
@@ -62,17 +62,14 @@ func main() {
 		fmt.Printf("% -14s: IP%d = %s\n", " ", i, ips[i])
 	}
 
+	idx := 0
 	if len(ips) > 1 {
 		fmt.Printf("The given host name is associated to %d IP addresses.\n", len(ips))
 		fmt.Printf("Which one should I use?\n")
-
+		var response string
 		for {
-			var response string
-			var idx int
-
 			fmt.Printf("\nPlease, enter an integer between 0 (for IP0) and %d (for IP%d).\n", len(ips)-1, len(ips))
 			fmt.Scanln(&response)
-
 			if idx, err = strconv.Atoi(response); nil != err {
 				fmt.Printf("The given value (%s) is invalid.\n", response)
 				continue
@@ -80,21 +77,18 @@ func main() {
 				fmt.Printf("The given value (%d) is invalid.\n", idx)
 				continue
 			}
-
-			ip, err = stun.MakeTransportAddress(ips[idx], *serverPort)
-			_ = err
 			break
 		}
-	} else {
-		ip, err = stun.MakeTransportAddress(ips[0], *serverPort)
-		_ = err
 	}
-	fmt.Printf("\nUsing transport address \"%s\".\n", ip)
+
+	addr.IP = net.ParseIP(ips[idx])
+	addr.Port = *serverPort
+	fmt.Printf("\nUsing transport address \"%s\".\n", addr.String())
 
 	// Perform discovery.
-	stun.ActivateOutput(*verbose)
+	stun.SetVerbose(*verbose)
 
-	if nat, err = stun.Discover(ip); nil != err {
+	if nat, err = stun.Discover(&addr); nil != err {
 		fmt.Printf("An error occured: %s\n", err)
 		os.Exit(1)
 	}

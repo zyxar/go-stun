@@ -17,11 +17,8 @@
 package stun
 
 import (
-	"errors"
-	"fmt"
 	"hash/crc32"
 	"net"
-	"regexp"
 )
 
 // The function calculates the STUN's fingerprint.
@@ -83,30 +80,9 @@ func nextBoundary(length uint16) uint16 {
 // OUTPUT
 // - The IP address. This can be an IPV4 or IPV6.
 // - The error flag.
-func parseIP(b []byte) (string, error) {
+func parseIP(b []byte) net.IP {
 	if len(b) != 4 && len(b) != 16 {
-		return "", errors.New("Invalid list of bytes: this does not represent an IP!")
+		return nil
 	}
-	return net.IP(b).String(), nil
-}
-
-// Given an IP address and a port number, this function creates a transport address.
-//
-// INPUT
-// - ip: IP address.
-// - port: port number.
-//
-// OUTPUT
-// - The transport address.
-// - The error flag.
-func MakeTransportAddress(ip string, port int) (string, error) {
-	ipv4 := regexp.MustCompile("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$")
-	if ipv4.MatchString(ip) {
-		return fmt.Sprintf("%s:%d", ip, port), nil
-	}
-	ipv6 := regexp.MustCompile("^[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}$")
-	if ipv6.MatchString(ip) {
-		return fmt.Sprintf("[%s]:%d", ip, port), nil
-	}
-	return "", fmt.Errorf("Invalid IP address \"%s\"!", ip)
+	return net.IP(b)
 }

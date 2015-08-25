@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
 )
 
 const (
@@ -366,16 +367,16 @@ func (this Packet) HexString() string {
 // - The IP address.
 // - The port number.
 // - The error flag.
-func (this Packet) MappedAddress() (bool, uint16, string, uint16, error) {
+func (this Packet) MappedAddress() (uint16, net.IP, uint16, error) {
 	for i := 0; i < this.NAttributes(); i++ {
 		attr := this.Attribute(i)
 		if ATTRIBUTE_MAPPED_ADDRESS != attr.Type {
 			continue
 		}
-		f, ip, p, err := attr.getAddress()
-		return true, f, ip, p, err
+		f, ip, p := attr.decode()
+		return f, ip, p, nil
 	}
-	return false, 0, "", 0, nil
+	return 0, nil, 0, errors.New("mapped address not found")
 }
 
 // This function extracts the "changed" address from a packet.
@@ -388,16 +389,16 @@ func (this Packet) MappedAddress() (bool, uint16, string, uint16, error) {
 // - The IP address.
 // - The port number.
 // - The error flag.
-func (this Packet) ChangedAddress() (bool, uint16, string, uint16, error) {
+func (this Packet) ChangedAddress() (uint16, net.IP, uint16, error) {
 	for i := 0; i < this.NAttributes(); i++ {
 		attr := this.Attribute(i)
 		if ATTRIBUTE_CHANGED_ADDRESS != attr.Type {
 			continue
 		}
-		f, ip, p, err := attr.getAddress()
-		return true, f, ip, p, err
+		f, ip, p := attr.decode()
+		return f, ip, p, nil
 	}
-	return false, 0, "", 0, nil
+	return 0, nil, 0, errors.New("changed address not found")
 }
 
 // This function extracts the xored mapped address from a packet.
@@ -410,18 +411,16 @@ func (this Packet) ChangedAddress() (bool, uint16, string, uint16, error) {
 // - The IP address.
 // - The port number.
 // - The error flag.
-func (this Packet) XorMappedAddress() (bool, uint16, string, uint16, error) {
+func (this Packet) XorMappedAddress() (uint16, net.IP, uint16, error) {
 	for i := 0; i < this.NAttributes(); i++ {
 		attr := this.Attribute(i)
 		if (ATTRIBUTE_XOR_MAPPED_ADDRESS != attr.Type) && (ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP != attr.Type) {
 			continue
 		}
-		family, ip, port, xip, xport, err := attr.XorMappedAddress()
-		_ = ip
-		_ = port
-		return true, family, xip, xport, err
+		family, _, _, xip, xport, err := attr.XorMappedAddress()
+		return family, xip, xport, err
 	}
-	return false, 0, "", 0, nil
+	return 0, nil, 0, errors.New("xor-mapped address not found")
 }
 
 // This function adds a "FINGERPRINT" attribute to packet.

@@ -18,6 +18,7 @@ package stun
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"testing"
 )
@@ -31,63 +32,35 @@ func TestCrc32Checksum(t *testing.T) {
 }
 
 func TestParseIP(t *testing.T) {
-	var err error
-	var ip string
+	var ip net.IP
 	ipv4 := []byte{0xAA, 0xBB, 0xCC, 0xDD}
 	ipv6 := []byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF}
 
-	ip, err = parseIP(ipv4)
-	if nil != err {
-		t.Errorf(fmt.Sprintf("%s", err))
-	}
-	if "170.187.204.221" != ip {
+	ip = parseIP(ipv4)
+	if nil == ip || "170.187.204.221" != ip.String() {
 		t.Errorf(fmt.Sprintf("Invalid IPV4: given 170.187.204.221, got %s", ip))
 	}
 
-	ip, err = parseIP(ipv6)
-	if nil != err {
-		t.Errorf(fmt.Sprintf("%s", err))
-	}
-	if "11:2233:4455:6677:8899:AABB:CCDD:EEFF" != strings.ToUpper(ip) {
+	ip = parseIP(ipv6)
+	if nil == ip || "11:2233:4455:6677:8899:AABB:CCDD:EEFF" != strings.ToUpper(ip.String()) {
 		t.Errorf(fmt.Sprintf("Invalid IPV6: given 11.2233.4455.6677.8899.AABB.CCDD.EEFF, got %s", ip))
 	}
 
 	ipv4 = []byte{0xAA, 0xBB, 0xCC, 0xDD, 0xEE}
-	ip, err = parseIP(ipv4)
-	if nil == err {
+	ip = parseIP(ipv4)
+	if nil != ip {
 		t.Errorf(fmt.Sprintf("Test should not succeed."))
 	}
 
 	ipv4 = []byte{0xAA, 0xBB, 0xCC}
-	ip, err = parseIP(ipv4)
-	if nil == err {
+	ip = parseIP(ipv4)
+	if nil != ip {
 		t.Errorf(fmt.Sprintf("Test should not succeed."))
 	}
 
 	ipv6 = []byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE}
-	ip, err = parseIP(ipv6)
-	if nil == err {
+	ip = parseIP(ipv6)
+	if nil != ip {
 		t.Errorf(fmt.Sprintf("Test should not succeed."))
-	}
-}
-
-func TestMakeTransportAddress(t *testing.T) {
-	var err error
-	var transport string
-
-	transport, err = MakeTransportAddress("1.2.3.4", 123)
-	if nil != err {
-		t.Errorf(fmt.Sprintf("%s", err))
-	}
-	if "1.2.3.4:123" != transport {
-		t.Errorf(fmt.Sprintf("Invalid transport address %s", transport))
-	}
-
-	transport, err = MakeTransportAddress("1:2:3:4:5:6:7:8", 123)
-	if nil != err {
-		t.Errorf(fmt.Sprintf("%s", err))
-	}
-	if "[1:2:3:4:5:6:7:8]:123" != transport {
-		t.Errorf(fmt.Sprintf("Invalid transport address %s", transport))
 	}
 }
