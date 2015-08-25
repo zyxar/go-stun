@@ -24,8 +24,9 @@ import (
 )
 
 var (
-	verbosity       bool = false
-	noResponseError      = errors.New("no response received")
+	verbosity        bool = false
+	noResponseError       = errors.New("no response received")
+	partialSendError      = errors.New("partial sent")
 )
 
 const (
@@ -153,12 +154,11 @@ func sendRequest(conn net.Conn, req *Packet) (*Packet, error) {
 	var retries_count int = 0
 
 	sent := false
+	var err error
+	var count int
+	var b []byte = make([]byte, 1000, 1000)
 
 	for {
-		var err error
-		var count int
-		var b []byte = make([]byte, 1000, 1000)
-
 		// Dump the packet.
 		if verbosity && !sent {
 			fmt.Fprintf(os.Stderr, "Sending REQUEST to \"%s\"\n\n%s\n", conn.RemoteAddr(), req.HexString())
@@ -173,7 +173,7 @@ func sendRequest(conn net.Conn, req *Packet) (*Packet, error) {
 			return nil, err
 		}
 		if len(p) != count {
-			return nil, fmt.Errorf("Partial sent")
+			return nil, partialSendError
 		}
 
 		// RFC 3489: Wait for a response.
@@ -230,7 +230,7 @@ func sendRequest(conn net.Conn, req *Packet) (*Packet, error) {
 	if verbosity {
 		fmt.Fprintln(os.Stderr)
 	}
-	return nil, nil
+	return nil, noResponseError
 }
 
 // Perform Test I.
@@ -258,15 +258,12 @@ func Test1(client *Client) (Response, error) {
 	var found bool
 
 	if verbosity {
-		fmt.Fprintf(os.Stderr, "%s", "Test I\n")
+		fmt.Fprintln(os.Stderr, "\nTest I.\n")
 	}
 
 	response.packet, err = client.SendBindingRequest()
 	if nil != err {
 		return response, err
-	}
-	if response.packet == nil {
-		return response, noResponseError
 	}
 
 	// Extracts the mapped address and the XORED mapped address.
@@ -333,7 +330,7 @@ func Test2(client *Client) (Response, error) {
 	var response Response
 
 	if verbosity {
-		fmt.Fprintf(os.Stderr, "%s", "Test II.\n")
+		fmt.Fprintln(os.Stderr, "\nTest II.\n")
 	}
 	response.packet, err = client.SendChangeRequest(true)
 	return response, err
@@ -350,7 +347,7 @@ func Test3(client *Client) (Response, error) {
 	var response Response
 
 	if verbosity {
-		fmt.Fprintf(os.Stderr, "%s", "Test III.\n")
+		fmt.Fprintln(os.Stderr, "\nTest III.\n")
 	}
 	response.packet, err = client.SendChangeRequest(false)
 	return response, err
@@ -364,7 +361,7 @@ func Test3(client *Client) (Response, error) {
 // - The error flag.
 func Discover(addr string) (int, error) {
 	var err error
-	var changer_transport string
+	var changed_address string
 	var test1_response Response
 
 	// RFC 3489: The client begins by initiating test I.  If this test yields no
@@ -400,8 +397,7 @@ func Discover(addr string) (int, error) {
 			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Change IP", test1_response.extra.(test1Info).changed_ip)
 			fmt.Fprintf(os.Stderr, "% -25s: %d\n", "Change port", int(test1_response.extra.(test1Info).changed_port))
 		}
-		changer_transport, err = MakeTransportAddress(test1_response.extra.(test1Info).changed_ip, int(test1_response.extra.(test1Info).changed_port))
-		if nil != err {
+		if changed_address, err = MakeTransportAddress(test1_response.extra.(test1Info).changed_ip, int(test1_response.extra.(test1Info).changed_port)); nil != err {
 			return NAT_ERROR, err
 		}
 	} else {
@@ -430,8 +426,7 @@ func Discover(addr string) (int, error) {
 		_, err = Test2(client)
 		if nil != err && err != noResponseError {
 			return NAT_ERROR, err
-		}
-		if err == noResponseError { // Test II (a): We did not receive any valid response from the server.
+		} else if err == noResponseError { // Test II (a): We did not receive any valid response from the server.
 
 			// RFC 3489:  If no response is received, it performs test I again, but this time,
 			// does so to the address and port from the CHANGED-ADDRESS attribute
@@ -439,13 +434,13 @@ func Discover(addr string) (int, error) {
 
 			if verbosity {
 				fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got no response for test II. Test II is not OK.")
-				fmt.Fprintf(os.Stderr, "% -25s: %s \"%s\"\n", "Conclusion", "Perform Test I again. This time, server's transport address is", changer_transport)
+				fmt.Fprintf(os.Stderr, "% -25s: %s \"%s\"\n", "Conclusion", "Perform Test I again. This time, server's transport address is", changed_address)
 			}
 
 			/// ----------
 			/// TEST I (b)
 			/// ----------
-			nc, err := NewClient(changer_transport)
+			nc, err := NewClient(changed_address)
 			if err != nil {
 				return NAT_ERROR, err
 			}
@@ -513,7 +508,7 @@ func Discover(addr string) (int, error) {
 		// request, the client knows that it is not natted. It executes test II.
 
 		if verbosity {
-			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test 1. Test I is OK. Addresses are the same.\n")
+			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test I. Test I is OK. Addresses are the same.\n")
 			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are *not* behind a NAT.")
 		}
 
