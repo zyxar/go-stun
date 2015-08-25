@@ -1,3 +1,4 @@
+// Copyright (C) 2015 Markus Tzoe
 // Copyright (C) 2012 Denis BEURIVE
 //
 // This program is free software: you can redistribute it and/or modify
