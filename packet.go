@@ -24,139 +24,6 @@ import (
 	"net"
 )
 
-const (
-	// STUN's magic cookie.
-	MAGIC_COOKIE = 0x2112A442
-
-	/* ------------------------------------------------------------------------------------------------ */
-	/* Packet' types.                                                                                   */
-	/* See: Session Traversal Utilities for NAT (STUN) Parameters                                       */
-	/*      http://www.iana.org/assignments/stun-parameters/stun-parameters.xml                         */
-	/* ------------------------------------------------------------------------------------------------ */
-	TYPE_BINDING_REQUEST                   = 0x0001
-	TYPE_BINDING_RESPONSE                  = 0x0101
-	TYPE_BINDING_ERROR_RESPONSE            = 0x0111
-	TYPE_SHARED_SECRET_REQUEST             = 0x0002
-	TYPE_SHARED_SECRET_RESPONSE            = 0x0102
-	TYPE_SHARED_ERROR_RESPONSE             = 0x0112
-	TYPE_ALLOCATE                          = 0x0003
-	TYPE_ALLOCATE_RESPONSE                 = 0x0103
-	TYPE_ALLOCATE_ERROR_RESPONSE           = 0x0113
-	TYPE_REFRESH                           = 0x0004
-	TYPE_REFRESH_RESPONSE                  = 0x0104
-	TYPE_REFRESH_ERROR_RESPONSE            = 0x0114
-	TYPE_SEND                              = 0x0006
-	TYPE_SEND_RESPONSE                     = 0x0106
-	TYPE_SEND_ERROR_RESPONSE               = 0x0116
-	TYPE_DATA                              = 0x0007
-	TYPE_DATA_RESPONSE                     = 0x0107
-	TYPE_DATA_ERROR_RESPONSE               = 0x0117
-	TYPE_CREATE_PERMISIION                 = 0x0008
-	TYPE_CREATE_PERMISIION_RESPONSE        = 0x0108
-	TYPE_CREATE_PERMISIION_ERROR_RESPONSE  = 0x0118
-	TYPE_CHANNEL_BINDING                   = 0x0009
-	TYPE_CHANNEL_BINDING_RESPONSE          = 0x0109
-	TYPE_CHANNEL_BINDING_ERROR_RESPONSE    = 0x0119
-	TYPE_CONNECT                           = 0x000A
-	TYPE_CONNECT_RESPONSE                  = 0x010A
-	TYPE_CONNECT_ERROR_RESPONSE            = 0x011A
-	TYPE_CONNECTION_BIND                   = 0x000B
-	TYPE_CONNECTION_BIND_RESPONSE          = 0x010B
-	TYPE_CONNECTION_BIND_ERROR_RESPONSE    = 0x011B
-	TYPE_CONNECTION_ATTEMPT                = 0x000C
-	TYPE_CONNECTION_ATTEMPT_RESPONSE       = 0x010C
-	TYPE_CONNECTION_ATTEMPT_ERROR_RESPONSE = 0x011C
-
-	/* ------------------------------------------------------------------------------------------------ */
-	/* Error values.                                                                                    */
-	/* See: Session Traversal Utilities for NAT (STUN) Parameters                                       */
-	/*      http://www.iana.org/assignments/stun-parameters/stun-parameters.xml                         */
-	/* ------------------------------------------------------------------------------------------------ */
-	ERROR_TRY_ALTERNATE                  = 300
-	ERROR_BAD_REQUEST                    = 400
-	ERROR_UNAUTHORIZED                   = 401
-	ERROR_UNASSIGNED_402                 = 402
-	ERROR_FORBIDDEN                      = 403
-	ERROR_UNKNOWN_ATTRIBUTE              = 420
-	ERROR_ALLOCATION_MISMATCH            = 437
-	ERROR_STALE_NONCE                    = 438
-	ERROR_UNASSIGNED_439                 = 439
-	ERROR_ADDRESS_FAMILY_NOT_SUPPORTED   = 440
-	ERROR_WRONG_CREDENTIALS              = 441
-	ERROR_UNSUPPORTED_TRANSPORT_PROTOCOL = 442
-	ERROR_PEER_ADDRESS_FAMILY_MISMATCH   = 443
-	ERROR_CONNECTION_ALREADY_EXISTS      = 446
-	ERROR_CONNECTION_TIMEOUT_OR_FAILURE  = 447
-	ERROR_ALLOCATION_QUOTA_REACHED       = 486
-	ERROR_ROLE_CONFLICT                  = 487
-	ERROR_SERVER_ERROR                   = 500
-	ERROR_INSUFFICIENT_CAPACITY          = 508
-)
-
-// This map associates an type's value to a type's name.
-var message_types = map[uint16]string{
-	TYPE_BINDING_REQUEST:                   "BINDING_REQUEST",
-	TYPE_BINDING_RESPONSE:                  "BINDING_RESPONSE",
-	TYPE_BINDING_ERROR_RESPONSE:            "BINDING_ERROR_RESPONSE",
-	TYPE_SHARED_SECRET_REQUEST:             "SHARED_SECRET_REQUEST",
-	TYPE_SHARED_SECRET_RESPONSE:            "SHARED_SECRET_RESPONSE",
-	TYPE_SHARED_ERROR_RESPONSE:             "SHARED_ERROR_RESPONSE",
-	TYPE_ALLOCATE:                          "ALLOCATE",
-	TYPE_ALLOCATE_RESPONSE:                 "ALLOCATE_RESPONSE",
-	TYPE_ALLOCATE_ERROR_RESPONSE:           "ALLOCATE_ERROR_RESPONSE",
-	TYPE_REFRESH:                           "REFRESH",
-	TYPE_REFRESH_RESPONSE:                  "REFRESH_RESPONSE",
-	TYPE_REFRESH_ERROR_RESPONSE:            "REFRESH_ERROR_RESPONSE",
-	TYPE_SEND:                              "SEND",
-	TYPE_SEND_RESPONSE:                     "SEND_RESPONSE",
-	TYPE_SEND_ERROR_RESPONSE:               "SEND_ERROR_RESPONSE",
-	TYPE_DATA:                              "DATA",
-	TYPE_DATA_RESPONSE:                     "DATA_RESPONSE",
-	TYPE_DATA_ERROR_RESPONSE:               "DATA_ERROR_RESPONSE",
-	TYPE_CREATE_PERMISIION:                 "CREATE_PERMISIION",
-	TYPE_CREATE_PERMISIION_RESPONSE:        "CREATE_PERMISIION_RESPONSE",
-	TYPE_CREATE_PERMISIION_ERROR_RESPONSE:  "CREATE_PERMISIION_ERROR_RESPONSE",
-	TYPE_CHANNEL_BINDING:                   "CHANNEL_BINDING",
-	TYPE_CHANNEL_BINDING_RESPONSE:          "CHANNEL_BINDING_RESPONSE",
-	TYPE_CHANNEL_BINDING_ERROR_RESPONSE:    "CHANNEL_BINDING_ERROR_RESPONSE",
-	TYPE_CONNECT:                           "CONNECT",
-	TYPE_CONNECT_RESPONSE:                  "CONNECT_RESPONSE",
-	TYPE_CONNECT_ERROR_RESPONSE:            "CONNECT_ERROR_RESPONSE",
-	TYPE_CONNECTION_BIND:                   "CONNECTION_BIND",
-	TYPE_CONNECTION_BIND_RESPONSE:          "CONNECTION_BIND_RESPONSE",
-	TYPE_CONNECTION_BIND_ERROR_RESPONSE:    "CONNECTION_BIND_ERROR_RESPONSE",
-	TYPE_CONNECTION_ATTEMPT:                "CONNECTION_ATTEMPT",
-	TYPE_CONNECTION_ATTEMPT_RESPONSE:       "CONNECTION_ATTEMPT_RESPONSE",
-	TYPE_CONNECTION_ATTEMPT_ERROR_RESPONSE: "CONNECTION_ATTEMPT_ERROR_RESPONSE",
-}
-
-// This map associates an error's code with an error's name.
-var error_names = map[uint16]string{
-	ERROR_TRY_ALTERNATE:                  "TRY_ALTERNATE",
-	ERROR_BAD_REQUEST:                    "BAD_REQUEST",
-	ERROR_UNAUTHORIZED:                   "UNAUTHORIZED",
-	ERROR_UNASSIGNED_402:                 "UNASSIGNED_402",
-	ERROR_FORBIDDEN:                      "FORBIDDEN",
-	ERROR_UNKNOWN_ATTRIBUTE:              "UNKNOWN_ATTRIBUTE",
-	ERROR_ALLOCATION_MISMATCH:            "ALLOCATION_MISMATCH",
-	ERROR_STALE_NONCE:                    "STALE_NONCE",
-	ERROR_UNASSIGNED_439:                 "UNASSIGNED_439",
-	ERROR_ADDRESS_FAMILY_NOT_SUPPORTED:   "ADDRESS_FAMILY_NOT_SUPPORTED",
-	ERROR_WRONG_CREDENTIALS:              "WRONG_CREDENTIALS",
-	ERROR_UNSUPPORTED_TRANSPORT_PROTOCOL: "UNSUPPORTED_TRANSPORT_PROTOCOL",
-	ERROR_PEER_ADDRESS_FAMILY_MISMATCH:   "PEER_ADDRESS_FAMILY_MISMATCH",
-	ERROR_CONNECTION_ALREADY_EXISTS:      "CONNECTION_ALREADY_EXISTS",
-	ERROR_CONNECTION_TIMEOUT_OR_FAILURE:  "CONNECTION_TIMEOUT_OR_FAILURE",
-	ERROR_ALLOCATION_QUOTA_REACHED:       "ALLOCATION_QUOTA_REACHED",
-	ERROR_ROLE_CONFLICT:                  "ROLE_CONFLICT",
-	ERROR_SERVER_ERROR:                   "SERVER_ERROR",
-	ERROR_INSUFFICIENT_CAPACITY:          "INSUFFICIENT_CAPACITY",
-}
-
-/* ------------------------------------------------------------------------------------------------ */
-/* Types.                                                                                           */
-/* ------------------------------------------------------------------------------------------------ */
-
 // This type represents a STUN UDP packet.
 // RFC5389: The message length MUST contain the size, in bytes, of the message
 //           **not** including the 20-byte STUN header.  Since all STUN attributes are
@@ -164,22 +31,18 @@ var error_names = map[uint16]string{
 //           always zero.  This provides another way to distinguish STUN packets
 //           from packets of other protocols.
 type Packet struct {
-	_type      uint16      // Type of the packet (constant TYPE_...).
-	length     uint16      // Lentgth of the packet. 16 bits
-	cookie     uint32      // The magik cookie (32 bits)
-	id         [12]byte    // The STUN's ID. 96 bits (12 bytes)
-	attributes []Attribute // The list of attributes included in the packet.
+	_type      uint16       // Type of the packet (constant TYPE_...).
+	length     uint16       // Lentgth of the packet. 16 bits
+	cookie     uint32       // The magik cookie (32 bits)
+	id         [12]byte     // The STUN's ID. 96 bits (12 bytes)
+	attributes []_Attribute // The list of attributes included in the packet.
 }
-
-/* ------------------------------------------------------------------------------------------------ */
-/* API                                                                                              */
-/* ------------------------------------------------------------------------------------------------ */
 
 // Add an attribute to the packet.
 //
 // INPUT
 // - attr: the attribute to add
-func (this *Packet) AddAttribute(attr Attribute) {
+func (this *Packet) AddAttribute(attr _Attribute) {
 	this.attributes = append(this.attributes, attr)
 	// Add the *TOTAL* length of the added attribute.
 	// (Padded) value + header
@@ -209,7 +72,7 @@ func (this *Packet) NAttributes() int {
 //
 // OUTPUT
 // - The attribute.
-func (this *Packet) Attribute(i int) Attribute {
+func (this *Packet) Attribute(i int) _Attribute {
 	return this.attributes[i]
 }
 
@@ -267,7 +130,7 @@ func newPacket(_type uint16, _length uint16, b []byte) (*Packet, error) {
 		_type:      _type,
 		cookie:     MAGIC_COOKIE,
 		length:     _length, // Header (20 bytes) is **not** included.
-		attributes: make([]Attribute, 0, 10),
+		attributes: make([]_Attribute, 0, 10),
 	}
 	// pkt.cookie = binary.BigEndian.Uint32(b[0:4])
 	copy(pkt.id[:], b[4:16])

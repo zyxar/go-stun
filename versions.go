@@ -16,16 +16,9 @@
 
 package stun
 
-const (
-	RFC3489 = iota
-	RFC5389
+var (
+	rfc int = RFC3489 // The chosen RFC used for compliance.
 )
 
-// The chosen RFC used for compliance.
-var rfc int = RFC3489
-
-// Set RFC to 3489.
 func SetRfc3489() { rfc = RFC3489 }
-
-// Set RFC to 5389
 func SetRfc5389() { rfc = RFC5389 }

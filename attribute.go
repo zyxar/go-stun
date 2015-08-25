@@ -24,107 +24,6 @@ import (
 	"unicode/utf8"
 )
 
-const (
-	ATTRIBUTE_FAMILY_IPV4 = 0x01 // IP family is IPV4
-	ATTRIBUTE_FAMILY_IPV6 = 0x02 // IP family is IPV6
-
-	/* ------------------------------------------------------------------------------------------------ */
-	/* Attributes' types.                                                                               */
-	/* See: Session Traversal Utilities for NAT (STUN) Parameters                                       */
-	/*      http://www.iana.org/assignments/stun-parameters/stun-parameters.xml                         */
-	/* Note: Value ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP is not mentioned in the above document.             */
-	/*       But it is used by servers.                                                                 */
-	/* ------------------------------------------------------------------------------------------------ */
-	ATTRIBUTE_MAPPED_ADDRESS           = 0x0001
-	ATTRIBUTE_RESPONSE_ADDRESS         = 0x0002
-	ATTRIBUTE_CHANGE_REQUEST           = 0x0003
-	ATTRIBUTE_SOURCE_ADDRESS           = 0x0004
-	ATTRIBUTE_CHANGED_ADDRESS          = 0x0005
-	ATTRIBUTE_USERNAME                 = 0x0006
-	ATTRIBUTE_PASSWORD                 = 0x0007
-	ATTRIBUTE_MESSAGE_INTEGRITY        = 0x0008
-	ATTRIBUTE_ERROR_CODE               = 0x0009
-	ATTRIBUTE_UNKNOWN_ATTRIBUTES       = 0x000A
-	ATTRIBUTE_REFLECTED_FROM           = 0x000B
-	ATTRIBUTE_CHANNEL_NUMBER           = 0x000C
-	ATTRIBUTE_LIFETIME                 = 0x000D
-	ATTRIBUTE_BANDWIDTH                = 0x0010
-	ATTRIBUTE_XOR_PEER_ADDRESS         = 0x0012
-	ATTRIBUTE_DATA                     = 0x0013
-	ATTRIBUTE_REALM                    = 0x0014
-	ATTRIBUTE_NONCE                    = 0x0015
-	ATTRIBUTE_XOR_RELAYED_ADDRESS      = 0x0016
-	ATTRIBUTE_REQUESTED_ADDRESS_FAMILY = 0x0017
-	ATTRIBUTE_EVEN_PORT                = 0x0018
-	ATTRIBUTE_REQUESTED_TRANSPORT      = 0x0019
-	ATTRIBUTE_DONT_FRAGMENT            = 0x001A
-	ATTRIBUTE_XOR_MAPPED_ADDRESS       = 0x0020
-	ATTRIBUTE_TIMER_VAL                = 0x0021
-	ATTRIBUTE_RESERVATION_TOKEN        = 0x0022
-	ATTRIBUTE_PRIORITY                 = 0x0024
-	ATTRIBUTE_USE_CANDIDATE            = 0x0025
-	ATTRIBUTE_PADDING                  = 0x0026
-	ATTRIBUTE_RESPONSE_PORT            = 0x0027
-	ATTRIBUTE_CONNECTION_ID            = 0x002A
-	ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP   = 0x8020
-	ATTRIBUTE_SOFTWARE                 = 0x8022
-	ATTRIBUTE_ALTERNATE_SERVER         = 0x8023
-	ATTRIBUTE_CACHE_TIMEOUT            = 0x8027
-	ATTRIBUTE_FINGERPRINT              = 0x8028
-	ATTRIBUTE_ICE_CONTROLLED           = 0x8029
-	ATTRIBUTE_ICE_CONTROLLING          = 0x802A
-	ATTRIBUTE_RESPONSE_ORIGIN          = 0x802B
-	ATTRIBUTE_OTHER_ADDRESS            = 0x802C
-	ATTRIBUTE_ECN_CHECK_STUN           = 0x802D
-	ATTRIBUTE_CISCO_STUN_FLOWDATA      = 0xC000
-)
-
-// This map associates an attribute's value to a attribute's name.
-var attribute_names = map[uint16]string{
-	ATTRIBUTE_MAPPED_ADDRESS:           "MAPPED_ADDRESS",
-	ATTRIBUTE_RESPONSE_ADDRESS:         "RESPONSE_ADDRESS",
-	ATTRIBUTE_CHANGE_REQUEST:           "CHANGE_REQUEST",
-	ATTRIBUTE_SOURCE_ADDRESS:           "SOURCE_ADDRESS",
-	ATTRIBUTE_CHANGED_ADDRESS:          "CHANGED_ADDRESS",
-	ATTRIBUTE_USERNAME:                 "USERNAME",
-	ATTRIBUTE_PASSWORD:                 "PASSWORD",
-	ATTRIBUTE_MESSAGE_INTEGRITY:        "MESSAGE_INTEGRITY",
-	ATTRIBUTE_ERROR_CODE:               "ERROR_CODE",
-	ATTRIBUTE_UNKNOWN_ATTRIBUTES:       "UNKNOWN_ATTRIBUTES",
-	ATTRIBUTE_REFLECTED_FROM:           "REFLECTED_FROM",
-	ATTRIBUTE_CHANNEL_NUMBER:           "CHANNEL_NUMBER",
-	ATTRIBUTE_LIFETIME:                 "LIFETIME",
-	ATTRIBUTE_BANDWIDTH:                "BANDWIDTH",
-	ATTRIBUTE_XOR_PEER_ADDRESS:         "XOR_PEER_ADDRESS",
-	ATTRIBUTE_DATA:                     "DATA",
-	ATTRIBUTE_REALM:                    "REALM",
-	ATTRIBUTE_NONCE:                    "NONCE",
-	ATTRIBUTE_XOR_RELAYED_ADDRESS:      "XOR_RELAYED_ADDRESS",
-	ATTRIBUTE_REQUESTED_ADDRESS_FAMILY: "REQUESTED_ADDRESS_FAMILY",
-	ATTRIBUTE_EVEN_PORT:                "EVEN_PORT",
-	ATTRIBUTE_REQUESTED_TRANSPORT:      "REQUESTED_TRANSPORT",
-	ATTRIBUTE_DONT_FRAGMENT:            "DONT_FRAGMENT",
-	ATTRIBUTE_XOR_MAPPED_ADDRESS:       "XOR_MAPPED_ADDRESS",
-	ATTRIBUTE_TIMER_VAL:                "TIMER_VAL",
-	ATTRIBUTE_RESERVATION_TOKEN:        "RESERVATION_TOKEN",
-	ATTRIBUTE_PRIORITY:                 "PRIORITY",
-	ATTRIBUTE_USE_CANDIDATE:            "USE_CANDIDATE",
-	ATTRIBUTE_PADDING:                  "PADDING",
-	ATTRIBUTE_RESPONSE_PORT:            "RESPONSE_PORT",
-	ATTRIBUTE_CONNECTION_ID:            "CONNECTION_ID",
-	ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP:   "XOR_MAPPED_ADDRESS",
-	ATTRIBUTE_SOFTWARE:                 "SOFTWARE",
-	ATTRIBUTE_ALTERNATE_SERVER:         "ALTERNATE_SERVER",
-	ATTRIBUTE_CACHE_TIMEOUT:            "CACHE_TIMEOUT",
-	ATTRIBUTE_FINGERPRINT:              "FINGERPRINT",
-	ATTRIBUTE_ICE_CONTROLLED:           "ICE_CONTROLLED",
-	ATTRIBUTE_ICE_CONTROLLING:          "ICE_CONTROLLING",
-	ATTRIBUTE_RESPONSE_ORIGIN:          "RESPONSE_ORIGIN",
-	ATTRIBUTE_OTHER_ADDRESS:            "OTHER_ADDRESS",
-	ATTRIBUTE_ECN_CHECK_STUN:           "ECN_CHECK_STUN",
-	ATTRIBUTE_CISCO_STUN_FLOWDATA:      "CISCO_STUN_FLOWDATA",
-}
-
 // This structure represents a message's attribute of a STUN message.
 // RFC 5389: The value in the length field MUST contain the length of the Value
 //           part of the attribute, prior to padding, measured in bytes.  Since
@@ -134,7 +33,7 @@ var attribute_names = map[uint16]string{
 //           padding bits are ignored, and may be any value.
 //
 // **BUT** RFC 5389 says that the **real** length must be a multiple of 4! (no padding)
-type Attribute struct {
+type _Attribute struct {
 	Type   uint16 // The attribute's type (constant ATTRIBUTE_...), 16 bits
 	Length uint16 // The length of the attribute, 16 bits
 	Value  []byte // The attribute's value.
@@ -155,7 +54,7 @@ type Attribute struct {
 // OUTPUT
 // - The new attribute.
 // - The error flag.
-func makeAttribute(_type uint16, value []byte) (attr Attribute, err error) {
+func makeAttribute(_type uint16, value []byte) (attr _Attribute, err error) {
 	if (0 != len(value)%4) && (rfc == RFC3489) {
 		err = errors.New("STUN is configured to be compliant with RFC 3489! Value's length must be a multiple of 4 bytes!")
 		return
@@ -185,7 +84,7 @@ func makeAttribute(_type uint16, value []byte) (attr Attribute, err error) {
 // - The XORED IP address (should be equal to the mapped address).
 // - The XORED port (should be equal to the mapped port).
 // - The error flag.
-func (attr Attribute) XorMappedAddress() (family uint16, addr net.IP, port uint16, addr_xor net.IP, port_xor uint16, err error) {
+func (attr _Attribute) XorMappedAddress() (family uint16, addr net.IP, port uint16, addr_xor net.IP, port_xor uint16, err error) {
 	cookie := []byte{0x21, 0x12, 0xA4, 0x42} // 0x2112A442
 	xored_ip := make([]byte, 0, 16)
 
@@ -222,7 +121,7 @@ func (attr Attribute) XorMappedAddress() (family uint16, addr net.IP, port uint1
 //
 // OUTPUT
 // - The name of the software.
-func (attr Attribute) Software() string {
+func (attr _Attribute) Software() string {
 	for i := 0; i < len(attr.Value); {
 		r, size := utf8.DecodeRune(attr.Value[i:])
 		if utf8.RuneError == r {
@@ -238,7 +137,7 @@ func (attr Attribute) Software() string {
 // OUTPUT
 // - The fingerprint.
 // - The error flag.
-func (attr Attribute) Fingerprint() (crc uint32, err error) {
+func (attr _Attribute) Fingerprint() (crc uint32, err error) {
 	if 4 != len(attr.Value) {
 		err = fmt.Errorf("Invalid fingerprint (% x)", attr.Value)
 		return
@@ -253,7 +152,7 @@ func (attr Attribute) Fingerprint() (crc uint32, err error) {
 // - A boolean value that indicates whether IP change is requested or not.
 // - A boolean value that indicates whether port number change is requested or not.
 // - The error flag.
-func (attr Attribute) ChangeRequest() (bool, bool, error) {
+func (attr _Attribute) ChangeRequest() (bool, bool, error) {
 	if 4 != len(attr.Value) {
 		return false, false, fmt.Errorf("Invalid change requested value (% x)", attr.Value)
 	}
@@ -265,7 +164,7 @@ func (attr Attribute) ChangeRequest() (bool, bool, error) {
 /* ------------------------------------------------------------------------------------------------ */
 
 // This function returns a textual representation of the attribute, if possible; otherwise null string.
-func (attr Attribute) String() string {
+func (attr _Attribute) String() string {
 	switch attr.Type {
 	case ATTRIBUTE_MAPPED_ADDRESS, ATTRIBUTE_SOURCE_ADDRESS, ATTRIBUTE_CHANGED_ADDRESS:
 		_, ip, port := attr.decode()
@@ -306,6 +205,6 @@ func (attr Attribute) String() string {
 //   + Example for IPV4: "192.168.0.1"
 //   + Example for IPV6: "0011:2233:4455:6677:8899:AABB:CCDD:EEFF"
 // - The port number.
-func (attr *Attribute) decode() (uint16, net.IP, uint16) {
+func (attr *_Attribute) decode() (uint16, net.IP, uint16) {
 	return binary.BigEndian.Uint16(attr.Value[0:2]), parseIP(attr.Value[4:]), binary.BigEndian.Uint16(attr.Value[2:4])
 }
