@@ -179,7 +179,16 @@ func (this xorMappedAddressExpAttribute) String() string {
 	return xorMappedAddressAttribute(this).String()
 }
 
-func (this softwareAttribute) String() string { return string(this) }
+func (this softwareAttribute) String() string {
+	length := len(this)
+	for length > 1 && this[length-1] == 0x00 {
+		length--
+	}
+	if length == 0 {
+		return ""
+	}
+	return string(this[:length])
+}
 
 func (this fingerprintAttribute) String() string {
 	return fmt.Sprintf("0x%08x", binary.BigEndian.Uint32(this))

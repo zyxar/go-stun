@@ -290,7 +290,7 @@ func TestSoftwareAttribute(t *testing.T) {
 	if bytes.Compare(b, attr.Value()) != 0 {
 		t.Error("attr value wrong")
 	}
-	if attr.String() != string(b) {
+	if attr.String() != str {
 		t.Error("attr string wrong")
 	}
 	if bytes.Compare(b, attr.Encode(nil)[4:]) != 0 {
