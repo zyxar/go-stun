@@ -370,10 +370,8 @@ func Discover(addr *net.UDPAddr) (int, error) {
 	defer client.Close()
 	if resp, err = Test1(client); nil != err {
 		if err == noResponseError {
-			if verbosity {
-				fmt.Fprintf(os.Stderr, "% -25s%s\n", "Result:", "Got no response for test I.")
-				fmt.Fprintf(os.Stderr, "% -25s%s\n", "Conclusion:", "UDP is blocked.")
-			}
+			fmt.Fprintf(os.Stderr, "% -25s%s\n", "Result:", "Got no response for test I.")
+			fmt.Fprintf(os.Stderr, "% -25s%s\n\n", "Conclusion:", "UDP is blocked.")
 			return NAT_BLOCKED, err
 		}
 		return NAT_ERROR, err
@@ -389,15 +387,12 @@ func Discover(addr *net.UDPAddr) (int, error) {
 		}
 		changedAddr = info.addr
 	} else {
-		if verbosity {
-			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "The response does not contain any \"changed\" address.")
-			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "The only thing we can say is that we are behind a NAT.\n")
-		}
+		fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "The response does not contain any \"changed\" address.")
+		fmt.Fprintf(os.Stderr, "% -25s: %s\n\n", "Conclusion", "The only thing we can say is that we are behind a NAT.")
 		return NAT_UNKNOWN, nil
 	}
 
 	if !info.identical { // Test I (a): The local transport address is different than the mapped transport address.
-
 		// RFC 3489: In the event that the IP address and port of the socket did not match
 		// the MAPPED-ADDRESS attribute in the response to test I, the client
 		// knows that it is behind a NAT. It performs test II.
@@ -406,10 +401,8 @@ func Discover(addr *net.UDPAddr) (int, error) {
 		/// TEST II (a)
 		/// -----------
 
-		if verbosity {
-			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test I. Test I is not OK.")
-			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are behind a NAT.\n")
-		}
+		fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test I. Test I is not OK.")
+		fmt.Fprintf(os.Stderr, "% -25s: %s\n\n", "Conclusion", "We are behind a NAT.")
 
 		_, err = Test2(client)
 		if nil != err && err != noResponseError {
@@ -420,10 +413,8 @@ func Discover(addr *net.UDPAddr) (int, error) {
 			// does so to the address and port from the CHANGED-ADDRESS attribute
 			// from the response to test I.
 
-			if verbosity {
-				fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got no response for test II. Test II is not OK.")
-				fmt.Fprintf(os.Stderr, "% -25s: %s \"%s\"\n", "Conclusion", "Perform Test I again. This time, server's transport address is", changedAddr.String())
-			}
+			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got no response for test II. Test II is not OK.")
+			fmt.Fprintf(os.Stderr, "% -25s: %s \"%s\"\n\n", "Conclusion", "Perform Test I again. This time, server's transport address is", changedAddr.String())
 
 			/// ----------
 			/// TEST I (b)
@@ -436,27 +427,20 @@ func Discover(addr *net.UDPAddr) (int, error) {
 			resp, err = Test1(nc)
 			if nil != err {
 				if err == noResponseError { // No response from the server. This should not happend.
-					if verbosity {
-						fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got no response for test I. This is unexpected!")
-						fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "The only thing we can say is that we are behind a NAT.\n")
-					}
+					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got no response for test I. This is unexpected!")
+					fmt.Fprintf(os.Stderr, "% -25s: %s\n\n", "Conclusion", "The only thing we can say is that we are behind a NAT.")
 					return NAT_UNKNOWN, nil
 				}
 				return NAT_ERROR, err
 			}
 
 			if !info.identical { // Test I (b)
-				if verbosity {
-					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test I. Test I is not OK.")
-					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are behind a symetric NAT.\n")
-				}
+				fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test I. Test I is not OK.")
+				fmt.Fprintf(os.Stderr, "% -25s: %s\n\n", "Conclusion", "We are behind a symetric NAT.")
 				return NAT_SYMETRIC, nil
 			} else { // Test I (b)
-
-				if verbosity {
-					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test I. Test I is OK.\n")
-					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "Perform Test III.\n")
-				}
+				fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test I. Test I is OK.")
+				fmt.Fprintf(os.Stderr, "% -25s: %s\n\n", "Conclusion", "Perform Test III.")
 
 				/// --------
 				/// TEST III
@@ -467,38 +451,29 @@ func Discover(addr *net.UDPAddr) (int, error) {
 					return NAT_ERROR, err
 				}
 				if err == noResponseError {
-					if verbosity {
-						fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got no response for test III.")
-						fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are behind a \"port sestricted\" NAT.\n")
-					}
+					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got no response for test III.")
+					fmt.Fprintf(os.Stderr, "% -25s: %s\n\n", "Conclusion", "We are behind a \"port sestricted\" NAT.")
 					return NAT_PORT_RESTRICTED, nil
 				} else {
-					if verbosity {
-						fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test III.")
-						fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are behind a \"restricted\" NAT.\n")
-					}
+					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test III.")
+					fmt.Fprintf(os.Stderr, "% -25s: %s\n\n", "Conclusion", "We are behind a \"restricted\" NAT.")
 					return NAT_RESTRICTED, nil
 				}
 			}
 		} else { // TEST II (a) : We received a valid response from the server.
 			// RFC 3489: If a response is received, the client knows that it is behind a \"full-cone\" NAT.
-			if verbosity {
-				fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Test II is OK.")
-				fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are behind a \"full cone\" NAT.\n")
-			}
+			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Test II is OK.")
+			fmt.Fprintf(os.Stderr, "% -25s: %s\n\n", "Conclusion", "We are behind a \"full cone\" NAT.")
 			return NAT_FULL_CONE, nil
 		}
 
 	} else { // Test I (a): The local transport address is identical to the mapped transport address.
-
 		// RFC 3489: If this address and port are the same
 		// as the local IP address and port of the socket used to send the
 		// request, the client knows that it is not natted. It executes test II.
 
-		if verbosity {
-			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test I. Test I is OK. Addresses are the same.\n")
-			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are *not* behind a NAT.")
-		}
+		fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test I. Test I is OK. Addresses are the same.")
+		fmt.Fprintf(os.Stderr, "% -25s: %s\n\n", "Conclusion", "We are *not* behind a NAT.")
 
 		/// -----------
 		/// TEST II (b)
@@ -512,19 +487,15 @@ func Discover(addr *net.UDPAddr) (int, error) {
 		_, err = Test2(client)
 		if nil != err {
 			if err == noResponseError {
-				if verbosity {
-					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got no response for test II.\n")
-					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are behind a symmetric UDP firewall.")
-				}
+				fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got no response for test II.")
+				fmt.Fprintf(os.Stderr, "% -25s: %s\n\n", "Conclusion", "We are behind a symmetric UDP firewall.")
 				return NAT_SYMETRIC_UDP_FIREWALL, nil
 			}
 			return NAT_ERROR, err
 		}
 
-		if verbosity {
-			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test II.\n")
-			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are *not* behind a NAT.")
-		}
+		fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test II.")
+		fmt.Fprintf(os.Stderr, "% -25s: %s\n\n", "Conclusion", "We are *not* behind a NAT.")
 		return NAT_NO_NAT, nil
 	}
 }
