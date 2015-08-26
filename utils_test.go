@@ -36,31 +36,26 @@ func TestParseIP(t *testing.T) {
 	ipv4 := []byte{0xAA, 0xBB, 0xCC, 0xDD}
 	ipv6 := []byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF}
 
-	ip = parseIP(ipv4)
-	if nil == ip || "170.187.204.221" != ip.String() {
+	if ip = parseIP(ipv4); nil == ip || "170.187.204.221" != ip.String() {
 		t.Errorf(fmt.Sprintf("Invalid IPV4: given 170.187.204.221, got %s", ip))
 	}
 
-	ip = parseIP(ipv6)
-	if nil == ip || "11:2233:4455:6677:8899:AABB:CCDD:EEFF" != strings.ToUpper(ip.String()) {
+	if ip = parseIP(ipv6); nil == ip || "11:2233:4455:6677:8899:AABB:CCDD:EEFF" != strings.ToUpper(ip.String()) {
 		t.Errorf(fmt.Sprintf("Invalid IPV6: given 11.2233.4455.6677.8899.AABB.CCDD.EEFF, got %s", ip))
 	}
 
 	ipv4 = []byte{0xAA, 0xBB, 0xCC, 0xDD, 0xEE}
-	ip = parseIP(ipv4)
-	if nil != ip {
-		t.Errorf(fmt.Sprintf("Test should not succeed."))
+	if ip = parseIP(ipv4); nil != ip {
+		t.Errorf(shouldNotPass)
 	}
 
 	ipv4 = []byte{0xAA, 0xBB, 0xCC}
-	ip = parseIP(ipv4)
-	if nil != ip {
-		t.Errorf(fmt.Sprintf("Test should not succeed."))
+	if ip = parseIP(ipv4); nil != ip {
+		t.Errorf(shouldNotPass)
 	}
 
 	ipv6 = []byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE}
-	ip = parseIP(ipv6)
-	if nil != ip {
-		t.Errorf(fmt.Sprintf("Test should not succeed."))
+	if ip = parseIP(ipv6); nil != ip {
+		t.Errorf(shouldNotPass)
 	}
 }

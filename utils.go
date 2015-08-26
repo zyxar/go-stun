@@ -57,21 +57,6 @@ func padding(p []byte) []byte {
 	return b
 }
 
-// Given a value, this function calculates the next multiple of 4.
-//
-// INPUT
-// - length: the value.
-//
-// OUPUT
-// - The next multiple of 4.
-func nextBoundary(length uint16) uint16 {
-	rest := length % 4
-	if 0 == rest {
-		return length
-	}
-	return length + 4 - rest
-}
-
 // This function converts a list of bytes into a string that represents an IP address.
 //
 // INPUT

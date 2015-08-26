@@ -16,10 +16,11 @@
 package stun
 
 import (
-	// "bytes"
 	"bytes"
 	"testing"
 )
+
+var shouldNotPass = "should not pass"
 
 func TestAttrType(t *testing.T) {
 	{
@@ -73,7 +74,6 @@ func TestAttrType(t *testing.T) {
 }
 
 func TestParseAttributes(t *testing.T) {
-	shouldNotPass := "should not pass"
 	var err error
 	b := []byte{0x00, 0x01, 0xdd, 0xbf, 0x7f, 0x00, 0x00, 0x01}
 	c := []byte{0, 0, 0, 0}
