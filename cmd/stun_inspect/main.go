@@ -83,7 +83,6 @@ func main() {
 
 	addr.IP = net.ParseIP(ips[idx])
 	addr.Port = *serverPort
-	fmt.Printf("\nUsing transport address \"%s\".\n", addr.String())
 
 	// Perform discovery.
 	stun.SetVerbose(*verbose)
@@ -94,7 +93,7 @@ func main() {
 	}
 
 	// Print result.
-	fmt.Println("\n\nCONCLUSION\n")
+	fmt.Printf("\n\nCONCLUSION: ")
 
 	switch nat {
 	case stun.NAT_ERROR:
@@ -102,7 +101,7 @@ func main() {
 	case stun.NAT_BLOCKED:
 		fmt.Println("UDP is blocked.")
 	case stun.NAT_UNKNOWN:
-		fmt.Println("Unexpected response from the STUN server. All we can say is that we are behind a NAT.")
+		fmt.Println("Status unknown. We maybe behind NAT.")
 	case stun.NAT_FULL_CONE:
 		fmt.Println("We are behind a full cone NAT.")
 	case stun.NAT_SYMETRIC:
@@ -115,5 +114,7 @@ func main() {
 		fmt.Println("We are not behind a NAT.")
 	case stun.NAT_SYMETRIC_UDP_FIREWALL:
 		fmt.Println("We are behind a symetric UDP firewall.")
+	default:
+		fmt.Println("Unexpected error.")
 	}
 }

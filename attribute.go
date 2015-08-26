@@ -36,7 +36,8 @@ type Attribute interface {
 	String() string
 	Encode([]byte) []byte
 	Value() []byte
-	Length() int
+	Len() int
+	Cap() int
 	Type() uint16
 }
 
@@ -63,15 +64,23 @@ func (softwareAttribute) Type() uint16            { return ATTRIBUTE_SOFTWARE }
 func (fingerprintAttribute) Type() uint16         { return ATTRIBUTE_FINGERPRINT }
 func (changeRequestAttribute) Type() uint16       { return ATTRIBUTE_CHANGE_REQUEST }
 
-// FIXME: distinguish *real* length and *padded* length
-func (this mappedAddressAttribute) Length() int       { return len(this) }
-func (this sourceAddressAttribute) Length() int       { return len(this) }
-func (this changedAddressAttribute) Length() int      { return len(this) }
-func (this xorMappedAddressAttribute) Length() int    { return len(this) }
-func (this xorMappedAddressExpAttribute) Length() int { return len(this) }
-func (this softwareAttribute) Length() int            { return len(this) }
-func (this fingerprintAttribute) Length() int         { return len(this) }
-func (this changeRequestAttribute) Length() int       { return len(this) }
+func (this mappedAddressAttribute) Len() int       { return len(this) }
+func (this sourceAddressAttribute) Len() int       { return len(this) }
+func (this changedAddressAttribute) Len() int      { return len(this) }
+func (this xorMappedAddressAttribute) Len() int    { return len(this) }
+func (this xorMappedAddressExpAttribute) Len() int { return len(this) }
+func (this softwareAttribute) Len() int            { return len(this) }
+func (this fingerprintAttribute) Len() int         { return len(this) }
+func (this changeRequestAttribute) Len() int       { return len(this) }
+
+func (this mappedAddressAttribute) Cap() int       { return cap(this) }
+func (this sourceAddressAttribute) Cap() int       { return cap(this) }
+func (this changedAddressAttribute) Cap() int      { return cap(this) }
+func (this xorMappedAddressAttribute) Cap() int    { return cap(this) }
+func (this xorMappedAddressExpAttribute) Cap() int { return cap(this) }
+func (this softwareAttribute) Cap() int            { return cap(this) }
+func (this fingerprintAttribute) Cap() int         { return cap(this) }
+func (this changeRequestAttribute) Cap() int       { return cap(this) }
 
 func (this mappedAddressAttribute) Value() []byte       { return this }
 func (this sourceAddressAttribute) Value() []byte       { return this }
@@ -83,74 +92,74 @@ func (this fingerprintAttribute) Value() []byte         { return this }
 func (this changeRequestAttribute) Value() []byte       { return this }
 
 func (this mappedAddressAttribute) Encode(p []byte) []byte {
-	if p == nil || len(p) < 4+this.Length() {
-		p = make([]byte, 4+this.Length())
+	if p == nil || cap(p) < 4+this.Cap() {
+		p = make([]byte, 4+this.Cap())
 	}
 	binary.BigEndian.PutUint16(p[:2], this.Type())
-	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Len()))
 	copy(p[4:], this)
 	return p
 }
 func (this sourceAddressAttribute) Encode(p []byte) []byte {
-	if p == nil || len(p) < 4+this.Length() {
-		p = make([]byte, 4+this.Length())
+	if p == nil || cap(p) < 4+this.Cap() {
+		p = make([]byte, 4+this.Cap())
 	}
 	binary.BigEndian.PutUint16(p[:2], this.Type())
-	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Len()))
 	copy(p[4:], this)
 	return p
 }
 func (this changedAddressAttribute) Encode(p []byte) []byte {
-	if p == nil || len(p) < 4+this.Length() {
-		p = make([]byte, 4+this.Length())
+	if p == nil || cap(p) < 4+this.Cap() {
+		p = make([]byte, 4+this.Cap())
 	}
 	binary.BigEndian.PutUint16(p[:2], this.Type())
-	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Len()))
 	copy(p[4:], this)
 	return p
 }
 func (this xorMappedAddressAttribute) Encode(p []byte) []byte {
-	if p == nil || len(p) < 4+this.Length() {
-		p = make([]byte, 4+this.Length())
+	if p == nil || cap(p) < 4+this.Cap() {
+		p = make([]byte, 4+this.Cap())
 	}
 	binary.BigEndian.PutUint16(p[:2], this.Type())
-	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Len()))
 	copy(p[4:], this)
 	return p
 }
 func (this xorMappedAddressExpAttribute) Encode(p []byte) []byte {
-	if p == nil || len(p) < 4+this.Length() {
-		p = make([]byte, 4+this.Length())
+	if p == nil || cap(p) < 4+this.Cap() {
+		p = make([]byte, 4+this.Cap())
 	}
 	binary.BigEndian.PutUint16(p[:2], this.Type())
-	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Len()))
 	copy(p[4:], this)
 	return p
 }
 func (this softwareAttribute) Encode(p []byte) []byte {
-	if p == nil || len(p) < 4+this.Length() {
-		p = make([]byte, 4+this.Length())
+	if p == nil || cap(p) < 4+this.Cap() {
+		p = make([]byte, 4+this.Cap())
 	}
 	binary.BigEndian.PutUint16(p[:2], this.Type())
-	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Len()))
 	copy(p[4:], this)
 	return p
 }
 func (this fingerprintAttribute) Encode(p []byte) []byte {
-	if p == nil || len(p) < 4+this.Length() {
-		p = make([]byte, 4+this.Length())
+	if p == nil || cap(p) < 4+this.Cap() {
+		p = make([]byte, 4+this.Cap())
 	}
 	binary.BigEndian.PutUint16(p[:2], this.Type())
-	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Len()))
 	copy(p[4:], this)
 	return p
 }
 func (this changeRequestAttribute) Encode(p []byte) []byte {
-	if p == nil || len(p) < 4+this.Length() {
-		p = make([]byte, 4+this.Length())
+	if p == nil || cap(p) < 4+this.Cap() {
+		p = make([]byte, 4+this.Cap())
 	}
 	binary.BigEndian.PutUint16(p[:2], this.Type())
-	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Len()))
 	copy(p[4:], this)
 	return p
 }
@@ -227,12 +236,13 @@ func ParseAttribute(b []byte) (Attribute, error) {
 
 func parseAttribute(_type uint16, b []byte) (Attribute, error) {
 	var err = errors.New("invalid bytes")
-	if 0 != len(b)%4 && rfc == RFC3489 && _type != ATTRIBUTE_SOFTWARE {
+	length := len(b)
+	if 0 != length%4 && rfc == RFC3489 && _type != ATTRIBUTE_SOFTWARE {
 		return nil, err
 	} else if len(b) > 65535 {
 		return nil, err
 	}
-	b = padding(b)
+	b = padding(b)[:length]
 	switch _type {
 	case ATTRIBUTE_MAPPED_ADDRESS:
 		if len(b) != 8 && len(b) != 20 {

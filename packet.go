@@ -43,7 +43,7 @@ type Packet struct {
 // - attr: the attribute to add
 func (this *Packet) AddAttribute(attr Attribute) {
 	this.attributes = append(this.attributes, attr)
-	this.length += uint16(attr.Length() + 4)
+	this.length += uint16(attr.Cap() + 4)
 }
 
 // Return the number of attributes in the packet.
@@ -70,14 +70,7 @@ func (this *Packet) Attribute(i int) Attribute {
 // OUTPUT
 // - The sequence of bytes.
 func (this Packet) Encode() []byte {
-	length := 20
-	for i := 0; i < len(this.attributes); i++ {
-		length += 4 + this.attributes[i].Length()
-	}
-	if length > 65535 {
-		return nil
-	}
-	p := make([]byte, length)
+	p := make([]byte, this.length+20)
 	binary.BigEndian.PutUint16(p[0:2], this._type)   // Add the message's type.
 	binary.BigEndian.PutUint16(p[2:4], this.length)  // Add the packet's length. // Note: at this point, set the length to 0.
 	binary.BigEndian.PutUint32(p[4:8], MAGIC_COOKIE) // Add the magic cookie.
@@ -85,9 +78,8 @@ func (this Packet) Encode() []byte {
 	pos := 20
 	for i := 0; i < len(this.attributes); i++ { // Add attributes.
 		this.attributes[i].Encode(p[pos:]) // Please keep in mind that values contain padding.
-		pos += this.attributes[i].Length() + 4
+		pos += this.attributes[i].Cap() + 4
 	}
-	binary.BigEndian.PutUint16(p[2:4], this.length)
 	return p
 }
 
@@ -164,9 +156,9 @@ func (this Packet) String() string {
 
 	for i := 0; i < this.NAttributes(); i++ {
 		attr := this.Attribute(i)
-		buffer.WriteString(fmt.Sprintf("% -14s: %d (total length %d)\n", "Attribute No.", i, attr.Length()+4))
+		buffer.WriteString(fmt.Sprintf("% -14s: %d (total length %d)\n", "Attribute No.", i, attr.Cap()+4))
 		buffer.WriteString(fmt.Sprintf("% -14s: 0x%04x (%s)\n", "Type", attr.Type(), attribute_names[attr.Type()]))
-		buffer.WriteString(fmt.Sprintf("% -14s: %d\n", "Length", attr.Length()))
+		buffer.WriteString(fmt.Sprintf("% -14s: %d\n", "Length", attr.Len()))
 		buffer.WriteString(fmt.Sprintf("% -14s: % x\n", "Value", attr.Value()))
 		buffer.WriteString(fmt.Sprintf("% -14s: %s\n", "Decode", attr.String()))
 	}

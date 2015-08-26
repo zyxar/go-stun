@@ -167,7 +167,7 @@ func TestMappedAddressAttribute(t *testing.T) {
 	if attr.Type() != ATTRIBUTE_MAPPED_ADDRESS {
 		t.Error("attr type wrong")
 	}
-	if attr.Length() != 8 {
+	if attr.Len() != 8 {
 		t.Error("attr length wrong")
 	}
 	if bytes.Compare(b, attr.Encode(nil)[4:]) != 0 {
@@ -190,7 +190,7 @@ func TestSourceAddressAttribute(t *testing.T) {
 	if attr.Type() != ATTRIBUTE_SOURCE_ADDRESS {
 		t.Error("attr type wrong")
 	}
-	if attr.Length() != 8 {
+	if attr.Len() != 8 {
 		t.Error("attr length wrong")
 	}
 	if bytes.Compare(b, attr.Encode(nil)[4:]) != 0 {
@@ -213,7 +213,7 @@ func TestChangedAddressAttribute(t *testing.T) {
 	if attr.Type() != ATTRIBUTE_CHANGED_ADDRESS {
 		t.Error("attr type wrong")
 	}
-	if attr.Length() != 8 {
+	if attr.Len() != 8 {
 		t.Error("attr length wrong")
 	}
 	if bytes.Compare(b, attr.Encode(nil)[4:]) != 0 {
@@ -236,7 +236,7 @@ func TestXorMappedAddressAttribute(t *testing.T) {
 	if attr.Type() != ATTRIBUTE_XOR_MAPPED_ADDRESS {
 		t.Error("attr type wrong")
 	}
-	if attr.Length() != 8 {
+	if attr.Len() != 8 {
 		t.Error("attr length wrong")
 	}
 	if bytes.Compare(b, attr.Encode(nil)[4:]) != 0 {
@@ -259,7 +259,7 @@ func TestXorMappedAddressExpAttribute(t *testing.T) {
 	if attr.Type() != ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP {
 		t.Error("attr type wrong")
 	}
-	if attr.Length() != 8 {
+	if attr.Len() != 8 {
 		t.Error("attr length wrong")
 	}
 	if bytes.Compare(b, attr.Encode(nil)[4:]) != 0 {
@@ -274,7 +274,8 @@ func TestXorMappedAddressExpAttribute(t *testing.T) {
 }
 
 func TestSoftwareAttribute(t *testing.T) {
-	b := []byte{0x67, 0x6f, 0x2d, 0x73, 0x74, 0x75, 0x6e}
+	str := "go-stun"
+	b := []byte(str)
 	attr, err := parseAttribute(ATTRIBUTE_SOFTWARE, b)
 	if err != nil {
 		t.Fatal(err)
@@ -282,18 +283,18 @@ func TestSoftwareAttribute(t *testing.T) {
 	if attr.Type() != ATTRIBUTE_SOFTWARE {
 		t.Error("attr type wrong")
 	}
-	if attr.Length() != 8 {
+	if attr.Len() != len(b) {
 		t.Error("attr length wrong")
-	}
-	b = append(b, 0x00)
-	if bytes.Compare(b, attr.Encode(nil)[4:]) != 0 {
-		t.Error("attr encode wrong")
 	}
 	if bytes.Compare(b, attr.Value()) != 0 {
 		t.Error("attr value wrong")
 	}
-	if attr.String() != string(b) {
+	if attr.String() != str {
 		t.Error("attr string wrong")
+	}
+	b = append(b, 0x00) // include padding
+	if bytes.Compare(b, attr.Encode(nil)[4:]) != 0 {
+		t.Error("attr encode wrong")
 	}
 }
 
@@ -306,7 +307,7 @@ func TestFingerprintAttribute(t *testing.T) {
 	if attr.Type() != ATTRIBUTE_FINGERPRINT {
 		t.Error("attr type wrong")
 	}
-	if attr.Length() != 4 {
+	if attr.Len() != 4 {
 		t.Error("attr length wrong")
 	}
 	if bytes.Compare(b, attr.Encode(nil)[4:]) != 0 {
@@ -329,7 +330,7 @@ func TestChangeRequestAttribute(t *testing.T) {
 	if attr.Type() != ATTRIBUTE_CHANGE_REQUEST {
 		t.Error("attr type wrong")
 	}
-	if attr.Length() != 4 {
+	if attr.Len() != 4 {
 		t.Error("attr length wrong")
 	}
 	if bytes.Compare(b, attr.Encode(nil)[4:]) != 0 {
