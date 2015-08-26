@@ -118,27 +118,13 @@ func newPacket(_type uint16, _length uint16, b []byte) (*Packet, error) {
 	//     Lengthes of attribltes' values don't include the padding's length.
 	var pos uint16 = 16
 	for pos < uint16(b_len) {
-		vtype := binary.BigEndian.Uint16(b[pos : pos+2])    // Type of the attribute.
-		length := binary.BigEndian.Uint16(b[pos+2 : pos+4]) // Length of the attribute (without the padding !!!!!!)
-		value := b[pos+4 : pos+4+length]                    // The value.
-		attribute, err := parseAttribute(vtype, value)
+		attribute, err := ParseAttribute(b[pos:])
 		if nil != err {
 			return nil, err
 		}
 		pkt.attributes = append(pkt.attributes, attribute)
-
-		// 4 bytes: for the attribute's header.
-		if RFC3489 == rfc {
-			pos += 4 + length
-			if 0 != pos%4 {
-				return nil, fmt.Errorf("Invalid value length in attribute")
-			}
-		} else {
-			// RFC 5389 only: we must take care of the padding.
-			pos += 4 + nextBoundary(length)
-		}
+		pos += uint16(attribute.Cap() + 4)
 	}
-
 	return &pkt, nil
 }
 
