@@ -1,5 +1,4 @@
 // Copyright (C) 2015 Markus Tzoe
-// Copyright (C) 2012 Denis BEURIVE
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -21,190 +20,261 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"unicode/utf8"
 )
 
-// This structure represents a message's attribute of a STUN message.
-// RFC 5389: The value in the length field MUST contain the length of the Value
-//           part of the attribute, prior to padding, measured in bytes.  Since
-//           STUN aligns attributes on 32-bit boundaries, attributes whose content
-//           is not a multiple of 4 bytes are padded with 1, 2, or 3 bytes of
-//           padding so that its value contains a multiple of 4 bytes.  The
-//           padding bits are ignored, and may be any value.
-//
-// **BUT** RFC 5389 says that the **real** length must be a multiple of 4! (no padding)
-type _Attribute struct {
-	Type   uint16 // The attribute's type (constant ATTRIBUTE_...), 16 bits
-	Length uint16 // The length of the attribute, 16 bits
-	Value  []byte // The attribute's value.
+type attribute []byte
+
+func (attr attribute) decode() (uint16, *net.UDPAddr) {
+	return binary.BigEndian.Uint16(attr[0:2]),
+		&net.UDPAddr{
+			IP:   parseIP(attr[4:]),
+			Port: int(binary.BigEndian.Uint16(attr[2:4])),
+		}
 }
 
-/* ------------------------------------------------------------------------------------------------ */
-/* Create                                                                                           */
-/*                                                                                                  */
-/* NOTE: http://code.google.com/p/go-idn/                                                           */
-/* ------------------------------------------------------------------------------------------------ */
+type Attribute interface {
+	String() string
+	Encode([]byte) []byte
+	Value() []byte
+	Length() int
+	Type() uint16
+}
 
-// Create a message's attribute.
-//
-// INPUT
-// - _type: attribute's type.
-// - value: attribute's value.
-//
-// OUTPUT
-// - The new attribute.
-// - The error flag.
-func makeAttribute(_type uint16, value []byte) (attr _Attribute, err error) {
-	if (0 != len(value)%4) && (rfc == RFC3489) {
-		err = errors.New("STUN is configured to be compliant with RFC 3489! Value's length must be a multiple of 4 bytes!")
-		return
-	} else if len(value) > 65535 {
-		err = fmt.Errorf("Can not create new attribute: attribute's value is too long (%d bytes)", len(value))
-		return
+type AddressAttribute interface {
+	Attribute
+	Decode() (uint16, *net.UDPAddr)
+}
+
+type mappedAddressAttribute attribute
+type sourceAddressAttribute attribute
+type changedAddressAttribute attribute
+type xorMappedAddressAttribute attribute
+type xorMappedAddressExpAttribute attribute
+type softwareAttribute attribute
+type fingerprintAttribute attribute
+type changeRequestAttribute attribute
+
+func (mappedAddressAttribute) Type() uint16       { return ATTRIBUTE_MAPPED_ADDRESS }
+func (sourceAddressAttribute) Type() uint16       { return ATTRIBUTE_SOURCE_ADDRESS }
+func (changedAddressAttribute) Type() uint16      { return ATTRIBUTE_CHANGED_ADDRESS }
+func (xorMappedAddressAttribute) Type() uint16    { return ATTRIBUTE_XOR_MAPPED_ADDRESS }
+func (xorMappedAddressExpAttribute) Type() uint16 { return ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP }
+func (softwareAttribute) Type() uint16            { return ATTRIBUTE_SOFTWARE }
+func (fingerprintAttribute) Type() uint16         { return ATTRIBUTE_FINGERPRINT }
+func (changeRequestAttribute) Type() uint16       { return ATTRIBUTE_CHANGE_REQUEST }
+
+// FIXME: distinguish *real* length and *padded* length
+func (this mappedAddressAttribute) Length() int       { return len(this) }
+func (this sourceAddressAttribute) Length() int       { return len(this) }
+func (this changedAddressAttribute) Length() int      { return len(this) }
+func (this xorMappedAddressAttribute) Length() int    { return len(this) }
+func (this xorMappedAddressExpAttribute) Length() int { return len(this) }
+func (this softwareAttribute) Length() int            { return len(this) }
+func (this fingerprintAttribute) Length() int         { return len(this) }
+func (this changeRequestAttribute) Length() int       { return len(this) }
+
+func (this mappedAddressAttribute) Value() []byte       { return this }
+func (this sourceAddressAttribute) Value() []byte       { return this }
+func (this changedAddressAttribute) Value() []byte      { return this }
+func (this xorMappedAddressAttribute) Value() []byte    { return this }
+func (this xorMappedAddressExpAttribute) Value() []byte { return this }
+func (this softwareAttribute) Value() []byte            { return this }
+func (this fingerprintAttribute) Value() []byte         { return this }
+func (this changeRequestAttribute) Value() []byte       { return this }
+
+func (this mappedAddressAttribute) Encode(p []byte) []byte {
+	if p == nil || len(p) < 4+this.Length() {
+		p = make([]byte, 4+this.Length())
 	}
-
-	b := padding(value)
-	leng := len(b)
-	attr.Type = _type
-	attr.Value = make([]byte, leng)
-	attr.Length = uint16(len(value))
-	copy(attr.Value, b)
-	return attr, nil
+	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	copy(p[4:], this)
+	return p
+}
+func (this sourceAddressAttribute) Encode(p []byte) []byte {
+	if p == nil || len(p) < 4+this.Length() {
+		p = make([]byte, 4+this.Length())
+	}
+	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	copy(p[4:], this)
+	return p
+}
+func (this changedAddressAttribute) Encode(p []byte) []byte {
+	if p == nil || len(p) < 4+this.Length() {
+		p = make([]byte, 4+this.Length())
+	}
+	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	copy(p[4:], this)
+	return p
+}
+func (this xorMappedAddressAttribute) Encode(p []byte) []byte {
+	if p == nil || len(p) < 4+this.Length() {
+		p = make([]byte, 4+this.Length())
+	}
+	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	copy(p[4:], this)
+	return p
+}
+func (this xorMappedAddressExpAttribute) Encode(p []byte) []byte {
+	if p == nil || len(p) < 4+this.Length() {
+		p = make([]byte, 4+this.Length())
+	}
+	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	copy(p[4:], this)
+	return p
+}
+func (this softwareAttribute) Encode(p []byte) []byte {
+	if p == nil || len(p) < 4+this.Length() {
+		p = make([]byte, 4+this.Length())
+	}
+	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	copy(p[4:], this)
+	return p
+}
+func (this fingerprintAttribute) Encode(p []byte) []byte {
+	if p == nil || len(p) < 4+this.Length() {
+		p = make([]byte, 4+this.Length())
+	}
+	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	copy(p[4:], this)
+	return p
+}
+func (this changeRequestAttribute) Encode(p []byte) []byte {
+	if p == nil || len(p) < 4+this.Length() {
+		p = make([]byte, 4+this.Length())
+	}
+	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
+	copy(p[4:], this)
+	return p
 }
 
-// Given an attribute that represents a "XOR mapped" address, this function returns the transport address.
-// See http://www.nexcom.fr/2012/06/stun-la-base/
-//
-// OUTPUT
-// - The address' family (1 for IPV4 or 2 for IPV6).
-// - The IP address.
-//   + Example for IPV4: "192.168.0.1"
-//   + Example for IPV6: "0011:2233:4455:6677:8899:AABB:CCDD:EEFF"
-// - The port number.
-// - The XORED IP address (should be equal to the mapped address).
-// - The XORED port (should be equal to the mapped port).
-// - The error flag.
-func (attr _Attribute) XorMappedAddress() (family uint16, addr net.IP, port uint16, addr_xor net.IP, port_xor uint16, err error) {
+func (this mappedAddressAttribute) String() string {
+	_, addr := attribute(this).decode()
+	return addr.String()
+}
+
+func (this sourceAddressAttribute) String() string {
+	_, addr := attribute(this).decode()
+	return addr.String()
+}
+
+func (this changedAddressAttribute) String() string {
+	_, addr := attribute(this).decode()
+	return addr.String()
+}
+
+func (this xorMappedAddressAttribute) String() string {
+	_, addr := attribute(this).decode()
+	_, addrXor := this.Decode()
+	return fmt.Sprintf("%s => %s", addr.String(), addrXor.String())
+}
+
+func (this xorMappedAddressExpAttribute) String() string {
+	return xorMappedAddressAttribute(this).String()
+}
+
+func (this softwareAttribute) String() string { return string(this) }
+
+func (this fingerprintAttribute) String() string {
+	return fmt.Sprintf("0x%08x", binary.BigEndian.Uint32(this))
+}
+
+func (this changeRequestAttribute) String() string {
+	return fmt.Sprintf("ip: %v | port: %v", (0x04|this[3]) != 0, (0x02|this[3]) != 0)
+}
+
+func (this mappedAddressAttribute) Decode() (uint16, *net.UDPAddr) {
+	return attribute(this).decode()
+}
+
+func (this sourceAddressAttribute) Decode() (uint16, *net.UDPAddr) {
+	return attribute(this).decode()
+}
+
+func (this changedAddressAttribute) Decode() (uint16, *net.UDPAddr) {
+	return attribute(this).decode()
+}
+
+func (this xorMappedAddressAttribute) Decode() (uint16, *net.UDPAddr) {
 	cookie := []byte{0x21, 0x12, 0xA4, 0x42} // 0x2112A442
-	xored_ip := make([]byte, 0, 16)
-
-	family = binary.BigEndian.Uint16(attr.Value[0:2])
-	if (ATTRIBUTE_FAMILY_IPV4 != family) && (ATTRIBUTE_FAMILY_IPV6 != family) {
-		err = fmt.Errorf("Invalid address' family: 0x%02x", family)
-		return
+	b := make([]byte, len(this))
+	copy(b, this)
+	for i := 0; i < len(b)-4; i++ {
+		b[i+4] ^= cookie[i%4]
 	}
-	port = binary.BigEndian.Uint16(attr.Value[2:4])
-	addr = parseIP(attr.Value[4:])
-	if ATTRIBUTE_FAMILY_IPV4 == family { // IPV4
-		if len(attr.Value[4:]) != 4 {
-			err = fmt.Errorf("Invalid IPV4 address: % x", attr.Value[4:])
-			return
-		}
-		for i := 0; i < 4; i++ {
-			xored_ip = append(xored_ip, attr.Value[i+4]^cookie[i])
-		}
-	} else { // IPV6
-		if len(attr.Value[4:]) != 16 {
-			err = fmt.Errorf("Invalid IPV6 address: % x", attr.Value[4:])
-			return
-		}
-		for i := 0; i < 16; i++ {
-			xored_ip = append(xored_ip, attr.Value[i+4]^cookie[i])
-		}
-	}
-	addr_xor = parseIP(xored_ip)
-	port_xor = port ^ 0x2112
-	return
+	b[2] ^= 0x21
+	b[3] ^= 0x12
+	return attribute(b).decode()
 }
 
-// Given an attribute that represents a "SOFTWARE" attribute, this function returns the name of the software.
-//
-// OUTPUT
-// - The name of the software.
-func (attr _Attribute) Software() string {
-	for i := 0; i < len(attr.Value); {
-		r, size := utf8.DecodeRune(attr.Value[i:])
-		if utf8.RuneError == r {
-			return "Can not convert this list of bytes into a string. It is not UTF8 encoded."
+func (this xorMappedAddressExpAttribute) Decode() (uint16, *net.UDPAddr) {
+	return xorMappedAddressAttribute(this).Decode()
+}
+
+func ParseAttribute(b []byte) (Attribute, error) {
+	vtype := binary.BigEndian.Uint16(b[:2])   // Type of the attribute.
+	length := binary.BigEndian.Uint16(b[2:4]) // Length of the attribute, without the padding
+	value := b[4 : 4+length]                  // The value.
+	return parseAttribute(vtype, value)
+}
+
+func parseAttribute(_type uint16, b []byte) (Attribute, error) {
+	var err = errors.New("invalid bytes")
+	if 0 != len(b)%4 && rfc == RFC3489 && _type != ATTRIBUTE_SOFTWARE {
+		return nil, err
+	} else if len(b) > 65535 {
+		return nil, err
+	}
+	b = padding(b)
+	switch _type {
+	case ATTRIBUTE_MAPPED_ADDRESS:
+		if len(b) != 8 && len(b) != 20 {
+			return nil, err
 		}
-		i += size
-	}
-	return string(attr.Value)
-}
-
-// This function returns a 32-bit integer that represents the fingerprint.
-//
-// OUTPUT
-// - The fingerprint.
-// - The error flag.
-func (attr _Attribute) Fingerprint() (crc uint32, err error) {
-	if 4 != len(attr.Value) {
-		err = fmt.Errorf("Invalid fingerprint (% x)", attr.Value)
-		return
-	}
-	crc = binary.BigEndian.Uint32(attr.Value)
-	return
-}
-
-// This function returns the value of an attribute which type is "REQUEST_CHANGE".
-//
-// OUPUT
-// - A boolean value that indicates whether IP change is requested or not.
-// - A boolean value that indicates whether port number change is requested or not.
-// - The error flag.
-func (attr _Attribute) ChangeRequest() (bool, bool, error) {
-	if 4 != len(attr.Value) {
-		return false, false, fmt.Errorf("Invalid change requested value (% x)", attr.Value)
-	}
-	return (0x04 | attr.Value[3]) != 0, (0x02 | attr.Value[3]) != 0, nil
-}
-
-/* ------------------------------------------------------------------------------------------------ */
-/* Export                                                                                           */
-/* ------------------------------------------------------------------------------------------------ */
-
-// This function returns a textual representation of the attribute, if possible; otherwise null string.
-func (attr _Attribute) String() string {
-	switch attr.Type {
-	case ATTRIBUTE_MAPPED_ADDRESS, ATTRIBUTE_SOURCE_ADDRESS, ATTRIBUTE_CHANGED_ADDRESS:
-		_, ip, port := attr.decode()
-		addr := net.UDPAddr{IP: ip, Port: int(port)}
-		return addr.String()
-	case ATTRIBUTE_XOR_MAPPED_ADDRESS, ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP:
-		_, ip, port, xored_ip, xored_port, err := attr.XorMappedAddress()
-		if nil != err {
-			return ""
+		return mappedAddressAttribute(b), nil
+	case ATTRIBUTE_SOURCE_ADDRESS:
+		if len(b) != 8 && len(b) != 20 {
+			return nil, err
 		}
-		addr := net.UDPAddr{IP: ip, Port: int(port)}
-		addr_xor := net.UDPAddr{IP: xored_ip, Port: int(xored_port)}
-		return fmt.Sprintf("%s => %s", addr.String(), addr_xor.String())
+		return sourceAddressAttribute(b), nil
+	case ATTRIBUTE_CHANGED_ADDRESS:
+		if len(b) != 8 && len(b) != 20 {
+			return nil, err
+		}
+		return changedAddressAttribute(b), nil
+	case ATTRIBUTE_XOR_MAPPED_ADDRESS:
+		if len(b) != 8 && len(b) != 20 {
+			return nil, err
+		}
+		return xorMappedAddressAttribute(b), nil
+	case ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP:
+		if len(b) != 8 && len(b) != 20 {
+			return nil, err
+		}
+		return xorMappedAddressExpAttribute(b), nil
 	case ATTRIBUTE_SOFTWARE:
-		return attr.Software()
+		return softwareAttribute(b), nil
 	case ATTRIBUTE_FINGERPRINT:
-		if crc, err := attr.Fingerprint(); nil != err {
-			return ""
-		} else {
-			return fmt.Sprintf("0x%08x", crc)
+		if len(b) != 4 {
+			return nil, err
 		}
+		return fingerprintAttribute(b), nil
 	case ATTRIBUTE_CHANGE_REQUEST:
-		ip, port, err := attr.ChangeRequest()
-		if nil != err {
-			return ""
+		if len(b) != 4 {
+			return nil, err
 		}
-		return fmt.Sprintf("Change IP: %v Change port: %v", ip, port)
+		return changeRequestAttribute(b), nil
 	default:
+		if _, ok := attribute_names[_type]; ok {
+			return nil, errors.New("unsupported type")
+		}
 	}
-	return ""
-}
-
-// Given an attribute that represents an address, this function returns the transport address (IP and port number).
-//
-// OUTPUT
-// - The address' family (1 for IPV4 or 2 for IPV6).
-// - The IP address.
-//   + Example for IPV4: "192.168.0.1"
-//   + Example for IPV6: "0011:2233:4455:6677:8899:AABB:CCDD:EEFF"
-// - The port number.
-func (attr *_Attribute) decode() (uint16, net.IP, uint16) {
-	return binary.BigEndian.Uint16(attr.Value[0:2]), parseIP(attr.Value[4:]), binary.BigEndian.Uint16(attr.Value[2:4])
+	return nil, errors.New("invalid type")
 }

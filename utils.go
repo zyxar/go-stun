@@ -49,10 +49,10 @@ func crc32Checksum(p []byte) uint32 {
 func padding(p []byte) []byte {
 	length := len(p)
 	rest := length % 4
-	if 0 == rest {
-		return p
+	if 0 != rest {
+		length += 4 - rest
 	}
-	b := make([]byte, length+4-rest)
+	b := make([]byte, length)
 	copy(b, p)
 	return b
 }

@@ -51,10 +51,9 @@ const (
 
 // This type represents the specific information returned by test I.
 type changedAddressInfo struct {
-	family    uint16 // The "IP family" value of the attribute "CHANGED-ADDRESS".
-	ip        net.IP // The "IP value" of the attribute "CHANGED-ADDRESS".
-	port      uint16 // The "port numner value" of the attribute "CHANGED-ADDRESS".
-	identical bool   // This flag indicates wether the local IP address id equal to the mapped one, or not.
+	family    uint16       // The "IP family" value of the attribute "CHANGED-ADDRESS".
+	addr      *net.UDPAddr // The "IP:Port" of the attribute "CHANGED-ADDRESS".
+	identical bool         // This flag indicates wether the local IP address id equal to the mapped one, or not.
 }
 
 // This type represents the information returned by a test.
@@ -205,7 +204,7 @@ func sendRequest(conn net.Conn, req *Packet) (*Packet, error) {
 
 		// For nice output.
 		if verbosity && (retries_count > 0) {
-			fmt.Fprintln(os.Stderr, "\n")
+			fmt.Fprintln(os.Stderr)
 		}
 
 		// Build the packet from the list of bytes.
@@ -251,13 +250,13 @@ func sendRequest(conn net.Conn, req *Packet) (*Packet, error) {
 // - The error flag.
 func Test1(client *Client) (*Response, error) {
 	var err error
-	var mappedIP, xoredMappedIP net.IP
-	var mappedPort, xoredMappedPort uint16
+	var mappedAddr, xoredMappedAddr *net.UDPAddr
 	var response *Response = &Response{}
 	var info changedAddressInfo
+	var idx int
 
 	if verbosity {
-		fmt.Fprintln(os.Stderr, "\nTest I.\n")
+		fmt.Fprintf(os.Stderr, "\nTest I.\n\n")
 	}
 
 	response.packet, err = client.SendBindingRequest()
@@ -266,45 +265,42 @@ func Test1(client *Client) (*Response, error) {
 	}
 
 	// Extracts the mapped address and the XORED mapped address.
-	// Note: Some STUN servers don't set the XORED mapped address (RFC 3489 does not define XORED mapped IP address).
-	_, mappedIP, mappedPort, err = response.packet.MappedAddress()
-	if nil != err {
-		return response, err
+	if idx = response.packet.MappedAddressIndex(); idx == -1 {
+		return response, errors.New("mapped address not found")
+	}
+	_, mappedAddr = response.packet.Attribute(idx).(AddressAttribute).Decode()
+	if verbosity {
+		fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Mapped address", mappedAddr.String())
 	}
 
-	_, xoredMappedIP, xoredMappedPort, err = response.packet.XorMappedAddress()
-
-	if verbosity {
-		fmt.Fprintf(os.Stderr, "% -25s: %s:%d\n", "Mapped address", mappedIP, mappedPort)
-		if nil == err {
-			if verbosity {
-				fmt.Fprintf(os.Stderr, "% -25s: %s:%d\n", "Xored mapped address", xoredMappedIP, xoredMappedPort)
-			}
-		} else {
-			if verbosity {
-				fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Xored mapped address", "No xored mapped address given")
-			}
+	// Note: Some STUN servers don't set the XORED mapped address (RFC 3489 does not define XORED mapped IP address).
+	if idx = response.packet.XorMappedAddressIndex(); idx != -1 {
+		_, xoredMappedAddr = response.packet.Attribute(idx).(AddressAttribute).Decode()
+		if verbosity {
+			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "XorMapped address", xoredMappedAddr.String())
+		}
+	} else {
+		if verbosity {
+			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "XorMapped address", "No address given")
 		}
 	}
 
-	if mappedIP != nil && xoredMappedIP != nil && mappedIP.String() != xoredMappedIP.String() {
-		mappedIP = xoredMappedIP
-		mappedPort = xoredMappedPort
+	if mappedAddr != nil && xoredMappedAddr != nil && mappedAddr.String() != xoredMappedAddr.String() {
+		mappedAddr = xoredMappedAddr
 	}
 
 	// Extracts the transport address "CHANGED-ADDRESS".
 	// Some servers don't set the attribute "CHANGED-ADDRESS".
 	// So we consider that the lake of this attribute is not an error.
-	info.family, info.ip, info.port, err = response.packet.ChangedAddress()
-	if nil != err {
-		return response, err
+	if idx = response.packet.ChangedAddressIndex(); idx != -1 {
+		info.family, info.addr = response.packet.Attribute(idx).(AddressAttribute).Decode()
 	}
 
 	// Compare local IP with mapped IP.
 	if verbosity {
 		fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Local address", client.conn.LocalAddr().String())
 	}
-	mappedAddr := net.UDPAddr{IP: mappedIP, Port: int(mappedPort)}
+
 	info.identical = client.conn.LocalAddr().String() == mappedAddr.String()
 	response.extra = info
 
@@ -323,7 +319,7 @@ func Test2(client *Client) (*Response, error) {
 	var response *Response = &Response{}
 
 	if verbosity {
-		fmt.Fprintln(os.Stderr, "\nTest II.\n")
+		fmt.Fprintf(os.Stderr, "\nTest II.\n\n")
 	}
 	response.packet, err = client.SendChangeRequest(true)
 	return response, err
@@ -340,7 +336,7 @@ func Test3(client *Client) (*Response, error) {
 	var response *Response = &Response{}
 
 	if verbosity {
-		fmt.Fprintln(os.Stderr, "\nTest III.\n")
+		fmt.Fprintf(os.Stderr, "\nTest III.\n\n")
 	}
 	response.packet, err = client.SendChangeRequest(false)
 	return response, err
@@ -385,12 +381,13 @@ func Discover(addr *net.UDPAddr) (int, error) {
 
 	// Save "changed transport address" for later test.
 	// Please note that some servers don't set this attribute.
-	if resp.extra.(changedAddressInfo).ip != nil {
+	info := resp.extra.(changedAddressInfo)
+	if info.addr != nil {
 		if verbosity {
-			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Change IP", resp.extra.(changedAddressInfo).ip)
-			fmt.Fprintf(os.Stderr, "% -25s: %d\n", "Change port", int(resp.extra.(changedAddressInfo).port))
+			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Change IP", info.addr.IP)
+			fmt.Fprintf(os.Stderr, "% -25s: %d\n", "Change port", int(info.addr.Port))
 		}
-		changedAddr = &net.UDPAddr{IP: resp.extra.(changedAddressInfo).ip, Port: int(resp.extra.(changedAddressInfo).port)}
+		changedAddr = info.addr
 	} else {
 		if verbosity {
 			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "The response does not contain any \"changed\" address.")
@@ -399,7 +396,7 @@ func Discover(addr *net.UDPAddr) (int, error) {
 		return NAT_UNKNOWN, nil
 	}
 
-	if !resp.extra.(changedAddressInfo).identical { // Test I (a): The local transport address is different than the mapped transport address.
+	if !info.identical { // Test I (a): The local transport address is different than the mapped transport address.
 
 		// RFC 3489: In the event that the IP address and port of the socket did not match
 		// the MAPPED-ADDRESS attribute in the response to test I, the client
@@ -448,7 +445,7 @@ func Discover(addr *net.UDPAddr) (int, error) {
 				return NAT_ERROR, err
 			}
 
-			if !resp.extra.(changedAddressInfo).identical { // Test I (b)
+			if !info.identical { // Test I (b)
 				if verbosity {
 					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Result", "Got a response for test I. Test I is not OK.")
 					fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Conclusion", "We are behind a symetric NAT.\n")
