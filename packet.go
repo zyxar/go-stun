@@ -43,7 +43,7 @@ type Packet struct {
 // - attr: the attribute to add
 func (this *Packet) AddAttribute(attr Attribute) {
 	this.attributes = append(this.attributes, attr)
-	this.length += uint16(attr.Cap() + 4)
+	this.length += uint16(attr.Length() + 4)
 }
 
 // Return the number of attributes in the packet.
@@ -78,7 +78,7 @@ func (this Packet) Encode() []byte {
 	pos := 20
 	for i := 0; i < len(this.attributes); i++ { // Add attributes.
 		this.attributes[i].Encode(p[pos:]) // Please keep in mind that values contain padding.
-		pos += this.attributes[i].Cap() + 4
+		pos += this.attributes[i].Length() + 4
 	}
 	return p
 }
@@ -123,7 +123,7 @@ func newPacket(_type uint16, _length uint16, b []byte) (*Packet, error) {
 			return nil, err
 		}
 		pkt.attributes = append(pkt.attributes, attribute)
-		pos += uint16(attribute.Cap() + 4)
+		pos += uint16(attribute.Length() + 4)
 	}
 	return &pkt, nil
 }
@@ -142,9 +142,9 @@ func (this Packet) String() string {
 
 	for i := 0; i < this.NAttributes(); i++ {
 		attr := this.Attribute(i)
-		buffer.WriteString(fmt.Sprintf("% -14s: %d (total length %d)\n", "Attribute No.", i, attr.Cap()+4))
+		buffer.WriteString(fmt.Sprintf("% -14s: %d (total length %d)\n", "Attribute No.", i, attr.Length()+4))
 		buffer.WriteString(fmt.Sprintf("% -14s: 0x%04x (%s)\n", "Type", attr.Type(), attribute_names[attr.Type()]))
-		buffer.WriteString(fmt.Sprintf("% -14s: %d\n", "Length", attr.Len()))
+		buffer.WriteString(fmt.Sprintf("% -14s: %d\n", "Length", attr.Length()))
 		buffer.WriteString(fmt.Sprintf("% -14s: % x\n", "Value", attr.Value()))
 		buffer.WriteString(fmt.Sprintf("% -14s: %s\n", "Decode", attr.String()))
 	}
@@ -238,16 +238,9 @@ func (this *Packet) AddFingerprintAttribute() error {
 func (this *Packet) AddSoftwareAttribute(name string) error {
 	length := len(name)
 	if length > 763 {
-		return errors.New("Software's name if too long (more than 763 bytes!)")
+		return errors.New("name too long")
 	}
-	var b []byte
-	if length%4 == 0 {
-		b = []byte(name)
-	} else {
-		b = make([]byte, nextBoundary(uint16(length)))
-		copy(b[:length], []byte(name))
-	}
-	if attr, err := parseAttribute(ATTRIBUTE_SOFTWARE, b); err != nil {
+	if attr, err := parseAttribute(ATTRIBUTE_SOFTWARE, []byte(name)); err != nil {
 		return err
 	} else {
 		this.AddAttribute(attr)
