@@ -161,24 +161,18 @@ func (this Packet) String() string {
 func (this Packet) HexString() string {
 	p := this.Encode()
 	var buffer bytes.Buffer
-	length := len(p)
-	rest := length % 8
-	nb := (length - rest) / 8
-
-	for i := 0; i < nb; i++ {
-		buffer.WriteString(fmt.Sprintf("\t%02x %02x %02x %02x  %02x %02x %02x %02x\n", p[i*8], p[i*8+1], p[i*8+2], p[i*8+3], p[i*8+4], p[i*8+5], p[i*8+6], p[i*8+7]))
-	}
-	if rest > 0 {
-		buffer.WriteByte('\t')
-		for i := 0; i < rest; i++ {
-			buffer.WriteString(fmt.Sprintf("%02x", p[nb*8+i]))
-			if i != rest-1 {
-				buffer.WriteByte(' ')
-				if i == 3 {
-					buffer.WriteByte(' ')
-				}
-			}
+	for i := 0; i < len(p); i++ {
+		if i%16 == 0 {
+			buffer.WriteByte('\t')
 		}
+		buffer.WriteString(fmt.Sprintf("%02x", p[i]))
+		if (i+1)%16 == 0 {
+			buffer.WriteByte('\n')
+		} else if (i+1)%2 == 0 {
+			buffer.WriteByte(' ')
+		}
+	}
+	if len(p)%16 != 0 {
 		buffer.WriteByte('\n')
 	}
 	return buffer.String()
