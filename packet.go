@@ -162,20 +162,21 @@ func (this Packet) HexString() string {
 	p := this.Encode()
 	var buffer bytes.Buffer
 	length := len(p)
-	rest := length % 4
-	nb := (length - rest) / 4
+	rest := length % 8
+	nb := (length - rest) / 8
 
 	for i := 0; i < nb; i++ {
-		buffer.WriteString(fmt.Sprintf("\t%02x %02x %02x %02x\n", p[i*4], p[i*4+1], p[i*4+2], p[i*4+3]))
+		buffer.WriteString(fmt.Sprintf("\t%02x %02x %02x %02x  %02x %02x %02x %02x\n", p[i*8], p[i*8+1], p[i*8+2], p[i*8+3], p[i*8+4], p[i*8+5], p[i*8+6], p[i*8+7]))
 	}
 	if rest > 0 {
 		buffer.WriteByte('\t')
-		for i := 0; i < 4; i++ {
-			buffer.WriteByte(' ')
-			if nb*4+i >= len(p) {
+		for i := 0; i < rest; i++ {
+			buffer.WriteString(fmt.Sprintf("%02x", p[nb*8+i]))
+			if i != rest-1 {
 				buffer.WriteByte(' ')
-			} else {
-				buffer.WriteString(fmt.Sprintf("%02x", p[nb*4+i]))
+				if i == 3 {
+					buffer.WriteByte(' ')
+				}
 			}
 		}
 		buffer.WriteByte('\n')
