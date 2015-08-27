@@ -17,7 +17,7 @@
 package stun
 
 var (
-	rfc int = RFC3489 // The chosen RFC used for compliance.
+	rfc int = RFC5389 // The chosen RFC used for compliance.
 )
 
 func SetRfc3489() { rfc = RFC3489 }
