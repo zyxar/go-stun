@@ -143,7 +143,7 @@ func (this Packet) String() string {
 	for i := 0; i < this.NAttributes(); i++ {
 		attr := this.Attribute(i)
 		buffer.WriteString(fmt.Sprintf("% -14s: %d (total length %d)\n", "Attribute No.", i, attr.Length()+4))
-		buffer.WriteString(fmt.Sprintf("% -14s: 0x%04x (%s)\n", "Type", attr.Type(), attribute_names[attr.Type()]))
+		buffer.WriteString(fmt.Sprintf("% -14s: 0x%04x (%s)\n", "Type", attr.Type().Value(), attr.Type().String()))
 		buffer.WriteString(fmt.Sprintf("% -14s: %d\n", "Length", attr.Length()))
 		buffer.WriteString(fmt.Sprintf("% -14s: % x\n", "Value", attr.Value()))
 		buffer.WriteString(fmt.Sprintf("% -14s: %s\n", "Decode", attr.String()))
@@ -180,7 +180,7 @@ func (this Packet) HexString() string {
 
 func (this Packet) hasAttribute(a uint16) int {
 	for i := 0; i < this.NAttributes(); i++ {
-		if this.Attribute(i).Type() == a {
+		if this.Attribute(i).Type().Value() == a {
 			return i
 		}
 	}

@@ -37,7 +37,7 @@ type Attribute interface {
 	Encode([]byte) []byte
 	Value() []byte
 	Length() int
-	Type() uint16
+	Type() Type
 }
 
 type AddressAttribute interface {
@@ -54,14 +54,19 @@ type softwareAttribute attribute
 type fingerprintAttribute attribute
 type changeRequestAttribute attribute
 
-func (mappedAddressAttribute) Type() uint16       { return ATTRIBUTE_MAPPED_ADDRESS }
-func (sourceAddressAttribute) Type() uint16       { return ATTRIBUTE_SOURCE_ADDRESS }
-func (changedAddressAttribute) Type() uint16      { return ATTRIBUTE_CHANGED_ADDRESS }
-func (xorMappedAddressAttribute) Type() uint16    { return ATTRIBUTE_XOR_MAPPED_ADDRESS }
-func (xorMappedAddressExpAttribute) Type() uint16 { return ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP }
-func (softwareAttribute) Type() uint16            { return ATTRIBUTE_SOFTWARE }
-func (fingerprintAttribute) Type() uint16         { return ATTRIBUTE_FINGERPRINT }
-func (changeRequestAttribute) Type() uint16       { return ATTRIBUTE_CHANGE_REQUEST }
+type attr_type uint16
+
+func (m attr_type) Value() uint16  { return uint16(m) }
+func (m attr_type) String() string { return attribute_names[m.Value()] }
+
+func (mappedAddressAttribute) Type() Type       { return attr_type(ATTRIBUTE_MAPPED_ADDRESS) }
+func (sourceAddressAttribute) Type() Type       { return attr_type(ATTRIBUTE_SOURCE_ADDRESS) }
+func (changedAddressAttribute) Type() Type      { return attr_type(ATTRIBUTE_CHANGED_ADDRESS) }
+func (xorMappedAddressAttribute) Type() Type    { return attr_type(ATTRIBUTE_XOR_MAPPED_ADDRESS) }
+func (xorMappedAddressExpAttribute) Type() Type { return attr_type(ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP) }
+func (softwareAttribute) Type() Type            { return attr_type(ATTRIBUTE_SOFTWARE) }
+func (fingerprintAttribute) Type() Type         { return attr_type(ATTRIBUTE_FINGERPRINT) }
+func (changeRequestAttribute) Type() Type       { return attr_type(ATTRIBUTE_CHANGE_REQUEST) }
 
 func (this mappedAddressAttribute) Length() int       { return len(this) }
 func (this sourceAddressAttribute) Length() int       { return len(this) }
@@ -85,7 +90,7 @@ func (this mappedAddressAttribute) Encode(p []byte) []byte {
 	if p == nil || cap(p) < 4+this.Length() {
 		p = make([]byte, 4+this.Length())
 	}
-	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[:2], this.Type().Value())
 	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
 	copy(p[4:], this)
 	return p
@@ -94,7 +99,7 @@ func (this sourceAddressAttribute) Encode(p []byte) []byte {
 	if p == nil || cap(p) < 4+this.Length() {
 		p = make([]byte, 4+this.Length())
 	}
-	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[:2], this.Type().Value())
 	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
 	copy(p[4:], this)
 	return p
@@ -103,7 +108,7 @@ func (this changedAddressAttribute) Encode(p []byte) []byte {
 	if p == nil || cap(p) < 4+this.Length() {
 		p = make([]byte, 4+this.Length())
 	}
-	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[:2], this.Type().Value())
 	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
 	copy(p[4:], this)
 	return p
@@ -112,7 +117,7 @@ func (this xorMappedAddressAttribute) Encode(p []byte) []byte {
 	if p == nil || cap(p) < 4+this.Length() {
 		p = make([]byte, 4+this.Length())
 	}
-	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[:2], this.Type().Value())
 	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
 	copy(p[4:], this)
 	return p
@@ -121,7 +126,7 @@ func (this xorMappedAddressExpAttribute) Encode(p []byte) []byte {
 	if p == nil || cap(p) < 4+this.Length() {
 		p = make([]byte, 4+this.Length())
 	}
-	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[:2], this.Type().Value())
 	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
 	copy(p[4:], this)
 	return p
@@ -130,7 +135,7 @@ func (this softwareAttribute) Encode(p []byte) []byte {
 	if p == nil || cap(p) < 4+this.Length() {
 		p = make([]byte, 4+this.Length())
 	}
-	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[:2], this.Type().Value())
 	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
 	copy(p[4:], this)
 	return p
@@ -139,7 +144,7 @@ func (this fingerprintAttribute) Encode(p []byte) []byte {
 	if p == nil || cap(p) < 4+this.Length() {
 		p = make([]byte, 4+this.Length())
 	}
-	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[:2], this.Type().Value())
 	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
 	copy(p[4:], this)
 	return p
@@ -148,7 +153,7 @@ func (this changeRequestAttribute) Encode(p []byte) []byte {
 	if p == nil || cap(p) < 4+this.Length() {
 		p = make([]byte, 4+this.Length())
 	}
-	binary.BigEndian.PutUint16(p[:2], this.Type())
+	binary.BigEndian.PutUint16(p[:2], this.Type().Value())
 	binary.BigEndian.PutUint16(p[2:4], uint16(this.Length()))
 	copy(p[4:], this)
 	return p

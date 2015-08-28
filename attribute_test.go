@@ -25,49 +25,49 @@ var shouldNotPass = "should not pass"
 func TestAttrType(t *testing.T) {
 	{
 		var attr mappedAddressAttribute
-		if attr.Type() != ATTRIBUTE_MAPPED_ADDRESS {
+		if attr.Type().Value() != ATTRIBUTE_MAPPED_ADDRESS {
 			t.Error("attr type error")
 		}
 	}
 	{
 		var attr sourceAddressAttribute
-		if attr.Type() != ATTRIBUTE_SOURCE_ADDRESS {
+		if attr.Type().Value() != ATTRIBUTE_SOURCE_ADDRESS {
 			t.Error("attr type error")
 		}
 	}
 	{
 		var attr changedAddressAttribute
-		if attr.Type() != ATTRIBUTE_CHANGED_ADDRESS {
+		if attr.Type().Value() != ATTRIBUTE_CHANGED_ADDRESS {
 			t.Error("attr type error")
 		}
 	}
 	{
 		var attr xorMappedAddressAttribute
-		if attr.Type() != ATTRIBUTE_XOR_MAPPED_ADDRESS {
+		if attr.Type().Value() != ATTRIBUTE_XOR_MAPPED_ADDRESS {
 			t.Error("attr type error")
 		}
 	}
 	{
 		var attr xorMappedAddressExpAttribute
-		if attr.Type() != ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP {
+		if attr.Type().Value() != ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP {
 			t.Error("attr type error")
 		}
 	}
 	{
 		var attr softwareAttribute
-		if attr.Type() != ATTRIBUTE_SOFTWARE {
+		if attr.Type().Value() != ATTRIBUTE_SOFTWARE {
 			t.Error("attr type error")
 		}
 	}
 	{
 		var attr fingerprintAttribute
-		if attr.Type() != ATTRIBUTE_FINGERPRINT {
+		if attr.Type().Value() != ATTRIBUTE_FINGERPRINT {
 			t.Error("attr type error")
 		}
 	}
 	{
 		var attr changeRequestAttribute
-		if attr.Type() != ATTRIBUTE_CHANGE_REQUEST {
+		if attr.Type().Value() != ATTRIBUTE_CHANGE_REQUEST {
 			t.Error("attr type error")
 		}
 	}
@@ -164,7 +164,7 @@ func TestMappedAddressAttribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if attr.Type() != ATTRIBUTE_MAPPED_ADDRESS {
+	if attr.Type().Value() != ATTRIBUTE_MAPPED_ADDRESS {
 		t.Error("attr type wrong")
 	}
 	if attr.Length() != 8 {
@@ -187,7 +187,7 @@ func TestSourceAddressAttribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if attr.Type() != ATTRIBUTE_SOURCE_ADDRESS {
+	if attr.Type().Value() != ATTRIBUTE_SOURCE_ADDRESS {
 		t.Error("attr type wrong")
 	}
 	if attr.Length() != 8 {
@@ -210,7 +210,7 @@ func TestChangedAddressAttribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if attr.Type() != ATTRIBUTE_CHANGED_ADDRESS {
+	if attr.Type().Value() != ATTRIBUTE_CHANGED_ADDRESS {
 		t.Error("attr type wrong")
 	}
 	if attr.Length() != 8 {
@@ -233,7 +233,7 @@ func TestXorMappedAddressAttribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if attr.Type() != ATTRIBUTE_XOR_MAPPED_ADDRESS {
+	if attr.Type().Value() != ATTRIBUTE_XOR_MAPPED_ADDRESS {
 		t.Error("attr type wrong")
 	}
 	if attr.Length() != 8 {
@@ -256,7 +256,7 @@ func TestXorMappedAddressExpAttribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if attr.Type() != ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP {
+	if attr.Type().Value() != ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP {
 		t.Error("attr type wrong")
 	}
 	if attr.Length() != 8 {
@@ -280,7 +280,7 @@ func TestSoftwareAttribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if attr.Type() != ATTRIBUTE_SOFTWARE {
+	if attr.Type().Value() != ATTRIBUTE_SOFTWARE {
 		t.Error("attr type wrong")
 	}
 	b = append(b, 0x00) // include padding
@@ -304,7 +304,7 @@ func TestFingerprintAttribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if attr.Type() != ATTRIBUTE_FINGERPRINT {
+	if attr.Type().Value() != ATTRIBUTE_FINGERPRINT {
 		t.Error("attr type wrong")
 	}
 	if attr.Length() != 4 {
@@ -327,7 +327,7 @@ func TestChangeRequestAttribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if attr.Type() != ATTRIBUTE_CHANGE_REQUEST {
+	if attr.Type().Value() != ATTRIBUTE_CHANGE_REQUEST {
 		t.Error("attr type wrong")
 	}
 	if attr.Length() != 4 {
