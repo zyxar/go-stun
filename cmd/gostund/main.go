@@ -17,26 +17,24 @@ func main() {
 		n, raddr, err := server.conn.ReadFromUDP(b)
 		if err != nil {
 			log.Println(err)
+			continue
 		}
-		if message, err := stun.NewMessage(b[:n]); err != nil {
-			log.Println(err)
-		} else {
-			log.Println(message.Type().String(), message.Length(), message.Id())
-			if err = response(nil, raddr, message); err != nil {
+		go func() {
+			if message, err := stun.NewMessage(b[:n]); err != nil {
 				log.Println(err)
+			} else {
+				log.Printf("%s %s/[% x]", message.Type().String(), message.Vendor(), message.Id())
+				if err = response(server.conn, raddr, message); err != nil {
+					log.Println(err)
+				}
 			}
-		}
+		}()
 	}
 	server.Close()
 }
 
-func response(laddr, raddr *net.UDPAddr, message *stun.Message) error {
-	conn, err := net.DialUDP(raddr.Network(), laddr, raddr)
-	if err != nil {
-		return err
-	}
+func response(conn *net.UDPConn, raddr *net.UDPAddr, message *stun.Message) (err error) {
 	payload := message.Encode()
-	_, err = conn.Write(payload)
-	conn.Close()
-	return err
+	_, err = conn.WriteToUDP(payload, raddr)
+	return
 }
