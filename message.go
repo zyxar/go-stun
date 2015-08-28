@@ -118,6 +118,9 @@ func (this *Message) XorMappedAddressIndex() int {
 }
 
 func NewMessage(b []byte) (*Message, error) {
+	if len(b) < 20 || len(b)-20 < int(binary.BigEndian.Uint16(b[2:4])) {
+		return nil, invalidMsgLengthErr
+	}
 	if binary.BigEndian.Uint32(b[4:8]) != MAGIC_COOKIE {
 		return nil, invalidCookieErr
 	}
@@ -200,5 +203,8 @@ func (this *Message) AddChangeRequestAttribute(changIP, changPort bool) error {
 	return nil
 }
 
-var invalidCookieErr = errors.New("invalid cookie value")
-var invalidMsgTypeErr = errors.New("invalid message type")
+var (
+	invalidCookieErr    = errors.New("invalid cookie value")
+	invalidMsgTypeErr   = errors.New("invalid message type")
+	invalidMsgLengthErr = errors.New("invalid message length")
+)

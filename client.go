@@ -62,8 +62,8 @@ type changedAddressInfo struct {
 // - Test2
 // - Test3
 type Response struct {
-	packet *Packet     // If a response has been received, then this value contains the response.
-	extra  interface{} // Specific information for a given test; could be: changedAddressInfo
+	msg   *Message    // If a response has been received, then this value contains the response.
+	extra interface{} // Specific information for a given test; could be: changedAddressInfo
 }
 
 /* ------------------------------------------------------------------------------------------------ */
@@ -98,17 +98,15 @@ func (this *Client) Close() error {
 	return this.conn.Close()
 }
 
-func (this *Client) send(req *Packet) (resp *Packet, err error) {
+func (this *Client) send(req *Message) (resp *Message, err error) {
 	resp, err = sendRequest(this.conn, req)
 	return
 }
 
-func (this *Client) SendBindingRequest() (resp *Packet, err error) {
-	req, _ := NewPacket([]byte{0x00, 0x01, // type
-		0x00, 0x00, // length
-		0x21, 0x12, 0xA4, 0x42, // cookie
-		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, // id
-	})
+func (this *Client) SendBindingRequest() (resp *Message, err error) {
+	req, _ := CreateEmptyMessage(TYPE_BINDING_REQUEST, 0,
+		[12]byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12},
+	)
 	if err = req.AddSoftwareAttribute("go-stun"); nil != err {
 		return resp, err
 	}
@@ -118,12 +116,10 @@ func (this *Client) SendBindingRequest() (resp *Packet, err error) {
 	return this.send(req)
 }
 
-func (this *Client) SendChangeRequest(change_ip bool) (resp *Packet, err error) {
-	req, _ := NewPacket([]byte{0x00, 0x01, // type
-		0x00, 0x00, // length
-		0x21, 0x12, 0xA4, 0x42, // cookie
-		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, // id
-	})
+func (this *Client) SendChangeRequest(change_ip bool) (resp *Message, err error) {
+	req, _ := CreateEmptyMessage(TYPE_BINDING_REQUEST, 0,
+		[12]byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12},
+	)
 	if err = req.AddSoftwareAttribute("go-stun"); nil != err {
 		return resp, err
 	}
@@ -136,19 +132,19 @@ func (this *Client) SendChangeRequest(change_ip bool) (resp *Packet, err error) 
 	return this.send(req)
 }
 
-// This function sends a given request and returns the received packet.
+// This function sends a given request and returns the received msg.
 //
 // INPUT
 // - conn: connexion to use.
 // - req: the request to send.
 //
 // OUTPUT
-// - The receive STUN packet.
+// - The receive STUN msg.
 // - A flag that indicates whether the client received a response or not.
 //   + true: the client received a response.
 //   + false: the client did not receive any response
 // - The error flag.
-func sendRequest(conn net.Conn, req *Packet) (*Packet, error) {
+func sendRequest(conn net.Conn, req *Message) (*Message, error) {
 	var request_timeout int = 200
 	var retries_count int = 0
 
@@ -158,14 +154,14 @@ func sendRequest(conn net.Conn, req *Packet) (*Packet, error) {
 	var b []byte = make([]byte, 1000, 1000)
 
 	for {
-		// Dump the packet.
+		// Dump the msg.
 		if verbosity && !sent {
 			fmt.Fprintf(os.Stderr, "Sending REQUEST to \"%s\"\n\n%s\n", conn.RemoteAddr(), req.HexString())
 			fmt.Fprintf(os.Stderr, "%s\n", req.String())
 			sent = true
 		}
 
-		// Send the packet.
+		// Send the msg.
 		p := req.Encode()
 		count, err = conn.Write(p)
 		if err != nil {
@@ -207,12 +203,12 @@ func sendRequest(conn net.Conn, req *Packet) (*Packet, error) {
 			fmt.Fprintln(os.Stderr)
 		}
 
-		// Build the packet from the list of bytes.
-		resp, err := NewPacket(b[:count])
+		// Build the msg from the list of bytes.
+		resp, err := NewMessage(b[:count])
 		if nil != err {
-			// The packet is not valid.
+			// The msg is not valid.
 			if verbosity {
-				fmt.Fprintf(os.Stderr, "\tInvalid Packet: %v. Continue.", err)
+				fmt.Fprintf(os.Stderr, "\tInvalid Message: %v. Continue.", err)
 			}
 			continue
 		}
@@ -225,7 +221,7 @@ func sendRequest(conn net.Conn, req *Packet) (*Packet, error) {
 		return resp, nil
 	}
 
-	// No valid packet has been received.
+	// No valid msg has been received.
 	if verbosity {
 		fmt.Fprintln(os.Stderr)
 	}
@@ -259,23 +255,23 @@ func Test1(client *Client) (*Response, error) {
 		fmt.Fprintf(os.Stderr, "\nTest I.\n\n")
 	}
 
-	response.packet, err = client.SendBindingRequest()
+	response.msg, err = client.SendBindingRequest()
 	if nil != err {
 		return response, err
 	}
 
 	// Extracts the mapped address and the XORED mapped address.
-	if idx = response.packet.MappedAddressIndex(); idx == -1 {
+	if idx = response.msg.MappedAddressIndex(); idx == -1 {
 		return response, errors.New("mapped address not found")
 	}
-	_, mappedAddr = response.packet.Attribute(idx).(AddressAttribute).Decode()
+	_, mappedAddr = response.msg.Attribute(idx).(AddressAttribute).Decode()
 	if verbosity {
 		fmt.Fprintf(os.Stderr, "% -25s: %s\n", "Mapped address", mappedAddr.String())
 	}
 
 	// Note: Some STUN servers don't set the XORED mapped address (RFC 3489 does not define XORED mapped IP address).
-	if idx = response.packet.XorMappedAddressIndex(); idx != -1 {
-		_, xoredMappedAddr = response.packet.Attribute(idx).(AddressAttribute).Decode()
+	if idx = response.msg.XorMappedAddressIndex(); idx != -1 {
+		_, xoredMappedAddr = response.msg.Attribute(idx).(AddressAttribute).Decode()
 		if verbosity {
 			fmt.Fprintf(os.Stderr, "% -25s: %s\n", "XorMapped address", xoredMappedAddr.String())
 		}
@@ -292,8 +288,8 @@ func Test1(client *Client) (*Response, error) {
 	// Extracts the transport address "CHANGED-ADDRESS".
 	// Some servers don't set the attribute "CHANGED-ADDRESS".
 	// So we consider that the lake of this attribute is not an error.
-	if idx = response.packet.ChangedAddressIndex(); idx != -1 {
-		info.family, info.addr = response.packet.Attribute(idx).(AddressAttribute).Decode()
+	if idx = response.msg.ChangedAddressIndex(); idx != -1 {
+		info.family, info.addr = response.msg.Attribute(idx).(AddressAttribute).Decode()
 	}
 
 	// Compare local IP with mapped IP.
@@ -321,7 +317,7 @@ func Test2(client *Client) (*Response, error) {
 	if verbosity {
 		fmt.Fprintf(os.Stderr, "\nTest II.\n\n")
 	}
-	response.packet, err = client.SendChangeRequest(true)
+	response.msg, err = client.SendChangeRequest(true)
 	return response, err
 }
 
@@ -338,7 +334,7 @@ func Test3(client *Client) (*Response, error) {
 	if verbosity {
 		fmt.Fprintf(os.Stderr, "\nTest III.\n\n")
 	}
-	response.packet, err = client.SendChangeRequest(false)
+	response.msg, err = client.SendChangeRequest(false)
 	return response, err
 }
 

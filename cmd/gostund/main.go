@@ -18,10 +18,11 @@ func main() {
 		if err != nil {
 			log.Println(err)
 		}
-		if packet, err := stun.NewPacket(b[:n]); err != nil {
+		if message, err := stun.NewMessage(b[:n]); err != nil {
 			log.Println(err)
 		} else {
-			if err = response(nil, raddr, packet); err != nil {
+			log.Println(message.Type().String(), message.Length(), message.Id())
+			if err = response(nil, raddr, message); err != nil {
 				log.Println(err)
 			}
 		}
@@ -29,12 +30,12 @@ func main() {
 	server.Close()
 }
 
-func response(laddr, raddr *net.UDPAddr, packet *stun.Packet) error {
+func response(laddr, raddr *net.UDPAddr, message *stun.Message) error {
 	conn, err := net.DialUDP(raddr.Network(), laddr, raddr)
 	if err != nil {
 		return err
 	}
-	payload := packet.Encode()
+	payload := message.Encode()
 	_, err = conn.Write(payload)
 	conn.Close()
 	return err
