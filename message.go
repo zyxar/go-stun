@@ -115,6 +115,37 @@ func (this *Message) XorMappedAddressIndex() int {
 	return index
 }
 
+func (this *Message) Vendor() string {
+	var index int
+	if index = this.hasAttribute(ATTRIBUTE_SOFTWARE); index == -1 {
+		return ""
+	}
+	return this.Attribute(index).String()
+}
+
+func (this *Message) Decode(b []byte) error {
+	if len(b) < 20 || len(b)-20 < int(binary.BigEndian.Uint16(b[2:4])) {
+		return invalidMsgLengthErr
+	}
+	if binary.BigEndian.Uint32(b[4:8]) != MAGIC_COOKIE {
+		return invalidCookieErr
+	}
+	length := int(binary.BigEndian.Uint16(b[2:4])) + 20
+	attributes := make([]Attribute, 0, 10)
+	pos := 20
+	for pos < length {
+		if attribute, err := ParseAttribute(b[pos:]); nil != err {
+			return err
+		} else {
+			attributes = append(attributes, attribute)
+			pos += attribute.Length() + 4
+		}
+	}
+	this.m = b[:length]
+	this.b = attributes
+	return nil
+}
+
 func NewMessage(b []byte) (*Message, error) {
 	if len(b) < 20 || len(b)-20 < int(binary.BigEndian.Uint16(b[2:4])) {
 		return nil, invalidMsgLengthErr
@@ -133,7 +164,7 @@ func NewMessage(b []byte) (*Message, error) {
 			pos += attribute.Length() + 4
 		}
 	}
-	return &Message{m: b, b: attributes}, nil
+	return &Message{m: b[:length], b: attributes}, nil
 }
 
 func CreateEmptyMessage(_type uint16, _length uint16, _id [12]byte) (*Message, error) {
