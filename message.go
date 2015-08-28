@@ -22,6 +22,7 @@ import (
 	"fmt"
 )
 
+type messageType uint16
 type MessageBody []Attribute
 type Message struct {
 	m []byte
@@ -33,11 +34,8 @@ type Type interface {
 	Value() uint16
 }
 
-type messageType uint16
-
-func (m messageType) Value() uint16  { return uint16(m) }
-func (m messageType) String() string { return message_types[m.Value()] }
-
+func (m messageType) Value() uint16           { return uint16(m) }
+func (m messageType) String() string          { return message_types[m.Value()] }
 func (this *Message) Type() Type              { return messageType(binary.BigEndian.Uint16(this.m[0:2])) }
 func (this *Message) Length() uint16          { return binary.BigEndian.Uint16(this.m[2:4]) }
 func (this *Message) Id() []byte              { return this.m[8:20] }
@@ -124,15 +122,16 @@ func NewMessage(b []byte) (*Message, error) {
 	if binary.BigEndian.Uint32(b[4:8]) != MAGIC_COOKIE {
 		return nil, invalidCookieErr
 	}
+	length := int(binary.BigEndian.Uint16(b[2:4])) + 20
 	attributes := make([]Attribute, 0, 10)
-	var pos uint16 = 20
-	for pos < uint16(len(b)) {
-		attribute, err := ParseAttribute(b[pos:])
-		if nil != err {
+	pos := 20
+	for pos < length {
+		if attribute, err := ParseAttribute(b[pos:]); nil != err {
 			return nil, err
+		} else {
+			attributes = append(attributes, attribute)
+			pos += attribute.Length() + 4
 		}
-		attributes = append(attributes, attribute)
-		pos += uint16(attribute.Length() + 4)
 	}
 	return &Message{m: b, b: attributes}, nil
 }
