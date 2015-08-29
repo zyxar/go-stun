@@ -238,6 +238,51 @@ func ParseAttribute(b []byte) (Attribute, error) {
 	return parseAttribute(vtype, value)
 }
 
+func CreateAddressAttribute(_type uint16, addr *net.UDPAddr) (attr AddressAttribute) {
+	switch _type {
+	case ATTRIBUTE_MAPPED_ADDRESS, ATTRIBUTE_SOURCE_ADDRESS, ATTRIBUTE_CHANGED_ADDRESS, ATTRIBUTE_XOR_MAPPED_ADDRESS, ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP:
+	default:
+		return
+	}
+
+	vlen := len(addr.IP)
+	b := make([]byte, 4+vlen)
+	if vlen == 4 {
+		binary.BigEndian.PutUint16(b[:2], ATTRIBUTE_FAMILY_IPV4)
+	} else {
+		binary.BigEndian.PutUint16(b[:2], ATTRIBUTE_FAMILY_IPV6)
+	}
+	binary.BigEndian.PutUint16(b[2:4], uint16(addr.Port))
+	copy(b[4:], addr.IP)
+
+	switch _type {
+	case ATTRIBUTE_MAPPED_ADDRESS:
+		attr = mappedAddressAttribute(b)
+	case ATTRIBUTE_SOURCE_ADDRESS:
+		attr = sourceAddressAttribute(b)
+	case ATTRIBUTE_CHANGED_ADDRESS:
+		attr = changedAddressAttribute(b)
+	case ATTRIBUTE_XOR_MAPPED_ADDRESS:
+		cookie := []byte{0x21, 0x12, 0xA4, 0x42}
+		for i := 0; i < len(b)-4; i++ {
+			b[i+4] ^= cookie[i%4]
+		}
+		b[2] ^= 0x21
+		b[3] ^= 0x12
+		attr = xorMappedAddressAttribute(b)
+	case ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP:
+		cookie := []byte{0x21, 0x12, 0xA4, 0x42}
+		for i := 0; i < len(b)-4; i++ {
+			b[i+4] ^= cookie[i%4]
+		}
+		b[2] ^= 0x21
+		b[3] ^= 0x12
+		attr = xorMappedAddressExpAttribute(b)
+	default:
+	}
+	return
+}
+
 func parseAttribute(_type uint16, b []byte) (Attribute, error) {
 	var err = errors.New("invalid bytes")
 	length := len(b)
