@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"net"
 
 	"github.com/zyxar/go-stun"
 )
@@ -23,18 +22,12 @@ func main() {
 			if message, err := stun.NewMessage(b[:n]); err != nil {
 				log.Println(err)
 			} else {
-				log.Printf("%s %s/[% x]", message.Type().String(), message.Vendor(), message.Id())
-				if err = response(server.conn, raddr, message); err != nil {
+				log.Printf("Recv:\n%s\n", message.String())
+				if err = server.ProcessMessage(message, raddr); err != nil {
 					log.Println(err)
 				}
 			}
 		}()
 	}
 	server.Close()
-}
-
-func response(conn *net.UDPConn, raddr *net.UDPAddr, message *stun.Message) (err error) {
-	payload := message.Encode()
-	_, err = conn.WriteToUDP(payload, raddr)
-	return
 }
