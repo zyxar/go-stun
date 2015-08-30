@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 )
 
 type attribute []byte
@@ -53,6 +54,7 @@ type xorMappedAddressExpAttribute attribute
 type softwareAttribute attribute
 type fingerprintAttribute attribute
 type changeRequestAttribute attribute
+type unImplementedAttribute attribute
 
 type attr_type uint16
 
@@ -67,6 +69,7 @@ func (xorMappedAddressExpAttribute) Type() Type { return attr_type(ATTRIBUTE_XOR
 func (softwareAttribute) Type() Type            { return attr_type(ATTRIBUTE_SOFTWARE) }
 func (fingerprintAttribute) Type() Type         { return attr_type(ATTRIBUTE_FINGERPRINT) }
 func (changeRequestAttribute) Type() Type       { return attr_type(ATTRIBUTE_CHANGE_REQUEST) }
+func (this unImplementedAttribute) Type() Type  { return attr_type(binary.BigEndian.Uint16(this[:2])) }
 
 func (this mappedAddressAttribute) Length() int       { return len(this) }
 func (this sourceAddressAttribute) Length() int       { return len(this) }
@@ -76,6 +79,7 @@ func (this xorMappedAddressExpAttribute) Length() int { return len(this) }
 func (this softwareAttribute) Length() int            { return len(this) }
 func (this fingerprintAttribute) Length() int         { return len(this) }
 func (this changeRequestAttribute) Length() int       { return len(this) }
+func (this unImplementedAttribute) Length() int       { return int(binary.BigEndian.Uint16(this[2:4])) }
 
 func (this mappedAddressAttribute) Value() []byte       { return this }
 func (this sourceAddressAttribute) Value() []byte       { return this }
@@ -85,6 +89,7 @@ func (this xorMappedAddressExpAttribute) Value() []byte { return this }
 func (this softwareAttribute) Value() []byte            { return this }
 func (this fingerprintAttribute) Value() []byte         { return this }
 func (this changeRequestAttribute) Value() []byte       { return this }
+func (this unImplementedAttribute) Value() []byte       { return this[4:] }
 
 func (this mappedAddressAttribute) Encode(p []byte) []byte {
 	if p == nil || cap(p) < 4+this.Length() {
@@ -158,6 +163,13 @@ func (this changeRequestAttribute) Encode(p []byte) []byte {
 	copy(p[4:], this)
 	return p
 }
+func (this unImplementedAttribute) Encode(p []byte) []byte {
+	if p == nil || cap(p) < 4+this.Length() {
+		p = make([]byte, 4+this.Length())
+	}
+	copy(p, this)
+	return p
+}
 
 func (this mappedAddressAttribute) String() string {
 	_, addr := attribute(this).decode()
@@ -203,6 +215,10 @@ func (this changeRequestAttribute) String() string {
 	return fmt.Sprintf("ip: %v | port: %v", (0x04|this[3]) != 0, (0x02|this[3]) != 0)
 }
 
+func (this unImplementedAttribute) String() string {
+	return "[unimplemeted attribtue]"
+}
+
 func (this mappedAddressAttribute) Decode() (uint16, *net.UDPAddr) {
 	return attribute(this).decode()
 }
@@ -234,8 +250,23 @@ func (this xorMappedAddressExpAttribute) Decode() (uint16, *net.UDPAddr) {
 func ParseAttribute(b []byte) (Attribute, error) {
 	vtype := binary.BigEndian.Uint16(b[:2])   // Type of the attribute.
 	length := binary.BigEndian.Uint16(b[2:4]) // Length of the attribute, without the padding
-	value := b[4 : 4+length]                  // The value.
-	return parseAttribute(vtype, value)
+	switch vtype {
+	case ATTRIBUTE_MAPPED_ADDRESS:
+	case ATTRIBUTE_SOURCE_ADDRESS:
+	case ATTRIBUTE_CHANGED_ADDRESS:
+	case ATTRIBUTE_XOR_MAPPED_ADDRESS:
+	case ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP:
+	case ATTRIBUTE_SOFTWARE:
+	case ATTRIBUTE_FINGERPRINT:
+	case ATTRIBUTE_CHANGE_REQUEST:
+	default:
+		if _, ok := attribute_names[vtype]; ok {
+			fmt.Fprintf(os.Stderr, "unsupported type: 0x%x\n", vtype)
+			return unImplementedAttribute(b[:length+4]), nil
+		}
+		return nil, errors.New("invalid type")
+	}
+	return parseAttribute(vtype, b[4:4+length])
 }
 
 func CreateAddressAttribute(_type uint16, addr *net.UDPAddr) (attr AddressAttribute) {
@@ -285,55 +316,50 @@ func CreateAddressAttribute(_type uint16, addr *net.UDPAddr) (attr AddressAttrib
 
 func parseAttribute(_type uint16, b []byte) (Attribute, error) {
 	var err = errors.New("invalid bytes")
-	length := len(b)
+	length := uint16(len(b))
 	if 0 != length%4 && rfc == RFC3489 && _type != ATTRIBUTE_SOFTWARE {
-		return nil, err
-	} else if len(b) > 65535 {
 		return nil, err
 	}
 	b = padding(b)
 	switch _type {
 	case ATTRIBUTE_MAPPED_ADDRESS:
-		if len(b) != 8 && len(b) != 20 {
+		if length != 8 && length != 20 {
 			return nil, err
 		}
 		return mappedAddressAttribute(b), nil
 	case ATTRIBUTE_SOURCE_ADDRESS:
-		if len(b) != 8 && len(b) != 20 {
+		if length != 8 && length != 20 {
 			return nil, err
 		}
 		return sourceAddressAttribute(b), nil
 	case ATTRIBUTE_CHANGED_ADDRESS:
-		if len(b) != 8 && len(b) != 20 {
+		if length != 8 && length != 20 {
 			return nil, err
 		}
 		return changedAddressAttribute(b), nil
 	case ATTRIBUTE_XOR_MAPPED_ADDRESS:
-		if len(b) != 8 && len(b) != 20 {
+		if length != 8 && length != 20 {
 			return nil, err
 		}
 		return xorMappedAddressAttribute(b), nil
 	case ATTRIBUTE_XOR_MAPPED_ADDRESS_EXP:
-		if len(b) != 8 && len(b) != 20 {
+		if length != 8 && length != 20 {
 			return nil, err
 		}
 		return xorMappedAddressExpAttribute(b), nil
 	case ATTRIBUTE_SOFTWARE:
 		return softwareAttribute(b), nil
 	case ATTRIBUTE_FINGERPRINT:
-		if len(b) != 4 {
+		if length != 4 {
 			return nil, err
 		}
 		return fingerprintAttribute(b), nil
 	case ATTRIBUTE_CHANGE_REQUEST:
-		if len(b) != 4 {
+		if length != 4 {
 			return nil, err
 		}
 		return changeRequestAttribute(b), nil
 	default:
-		if _, ok := attribute_names[_type]; ok {
-			return nil, errors.New("unsupported type")
-		}
 	}
 	return nil, errors.New("invalid type")
 }
